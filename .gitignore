@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+vendor/
+
+# builds
+.next/
+out/
+build/
+dist/
+
+# environment — never commit real keys (SHOP_XENDIFY_SECRET_KEY, webhook key)
+.env
+.env.*
+!.env.example
+
+# laravel
+backend/storage/*.key
+backend/storage/pail/
+backend/public/storage
+backend/public/hot
+backend/bootstrap/cache/*.php
+backend/database/*.sqlite*
+backend/.phpunit.result.cache
+backend/.phpunit.cache/
+
+# next
+next-env.d.ts
+.vercel
+*.tsbuildinfo
+
+# editors / os
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# logs
+*.log
+npm-debug.log*

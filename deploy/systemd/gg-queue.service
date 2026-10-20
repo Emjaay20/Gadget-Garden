@@ -1,0 +1,28 @@
+# The queue worker. Order confirmations and status emails run through here.
+#
+# `queue:work` rather than `queue:listen`: work keeps the framework booted
+# between jobs, which is what you want in production. The trade is that it holds
+# stale code until restarted, so the deploy script restarts it explicitly.
+
+[Unit]
+Description=Gadgets Garden — queue worker
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=deploy
+WorkingDirectory=/srv/gadgetsgarden/backend
+# --tries=3 so a transient SMTP failure retries rather than dropping a receipt.
+# --max-time recycles the worker hourly, which caps any slow memory growth.
+ExecStart=/usr/bin/php artisan queue:work --tries=3 --backoff=30 --max-time=3600
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/gadgetsgarden/backend/storage
+
+[Install]
+WantedBy=multi-user.target

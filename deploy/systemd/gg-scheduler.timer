@@ -1,0 +1,16 @@
+# Every minute, the way Laravel's scheduler expects.
+#
+# `orders:expire-unpaid` is the job that matters here: without it, every
+# abandoned checkout keeps a one-of-a-kind laptop off the market permanently.
+
+[Unit]
+Description=Gadgets Garden — scheduler (every minute)
+
+[Timer]
+OnCalendar=*:0/1
+AccuracySec=10s
+# Catch up after a reboot rather than silently skipping the window.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

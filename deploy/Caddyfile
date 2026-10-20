@@ -1,0 +1,66 @@
+# Gadgets Garden — reverse proxy and TLS.
+#
+# Caddy handles certificates automatically. Three hosts, one process:
+#
+#   gadgetsgarden.ng        the storefront          (Next, :3000)
+#   admin.gadgetsgarden.ng  the backoffice          (Next, :3001)
+#   api.gadgetsgarden.ng    the Laravel API         (php-fpm via the public/ dir)
+#
+# Replace the domains before first deploy; Caddy will try to issue certificates
+# for whatever is written here.
+
+{
+	email hello@gadgetsgarden.ng
+}
+
+# --------------------------------------------------------------- storefront
+gadgetsgarden.ng, www.gadgetsgarden.ng {
+	encode zstd gzip
+
+	# Next serves its own hashed assets with correct immutable headers, so
+	# nothing is cached here — doing it twice is how stale JS ships.
+	reverse_proxy 127.0.0.1:3000
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# The storefront loads no third-party scripts. If analytics is added
+		# later, widen this deliberately rather than removing it.
+		X-Frame-Options "DENY"
+	}
+}
+
+# -------------------------------------------------------------- backoffice
+admin.gadgetsgarden.ng {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3001
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		# Staff pages must never be indexed, whatever a stray link does.
+		X-Robots-Tag "noindex, nofollow"
+	}
+}
+
+# --------------------------------------------------------------------- API
+api.gadgetsgarden.ng {
+	root * /srv/gadgetsgarden/backend/public
+	encode zstd gzip
+
+	php_fastcgi unix//run/php/php8.3-fpm.sock
+	file_server
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Robots-Tag "noindex, nofollow"
+	}
+
+	# Never serve dotfiles — .env sits one directory up, but a symlink or a
+	# misconfigured root should not become a credential leak.
+	@dotfiles path /.*
+	respond @dotfiles 404
+}

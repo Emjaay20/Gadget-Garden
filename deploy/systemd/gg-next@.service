@@ -1,0 +1,33 @@
+# A Next.js app, templated on its directory name:
+#   systemctl enable --now gg-next@storefront
+#   systemctl enable --now gg-next@backoffice
+#
+# The port comes from each app's own `npm start` script (3000 / 3001), so this
+# unit carries no port of its own and cannot drift from package.json.
+
+[Unit]
+Description=Gadgets Garden — %i (Next.js)
+After=network.target
+# The API being down does not stop the site rendering its shell, so this is a
+# soft ordering hint rather than a hard dependency.
+Wants=gg-queue.service
+
+[Service]
+Type=simple
+User=deploy
+WorkingDirectory=/srv/gadgetsgarden/%i
+Environment=NODE_ENV=production
+EnvironmentFile=/srv/gadgetsgarden/%i/.env.production
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+
+# A Next server needs none of these.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/gadgetsgarden/%i/.next
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,404 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+  ============================================================================
+  Gadgets Garden — design tokens
+
+  See DESIGN.md for where every value comes from. The short version:
+
+  The layout reference (Behance) is white and minimal; the brand's own identity
+  (logo, Instagram post templates) is black with an iridescent gradient. The
+  resolution is LIGHT-LED WITH DARK BOOKENDS — white catalogue surface, because
+  product photography and prices read better on it, and black + gradient for the
+  hero, promo banners and footer, where brand identity belongs.
+
+  `.dark` is therefore NOT a user-facing theme toggle. It is a section wrapper:
+  put `class="dark"` on the hero or footer and every shadcn component inside it
+  re-themes automatically, because the variant below matches any descendant.
+  ============================================================================
+*/
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* Bound to the next/font variables declared in app/layout.tsx. Naming these
+     directly rather than `var(--font-sans)` avoids the self-reference the
+     shadcn template ships with, which resolves to nothing. */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  /* --- brand ------------------------------------------------------------ */
+  --color-gg-ink: var(--gg-ink);
+  --color-gg-teal: var(--gg-teal);
+  --color-gg-cyan: var(--gg-cyan);
+  --color-gg-sky: var(--gg-sky);
+  --color-gg-blue: var(--gg-blue);
+  --color-gg-indigo: var(--gg-indigo);
+  --color-gg-magenta: var(--gg-magenta);
+  --color-gg-amber: var(--gg-amber);
+
+  /* --- condition badges (New / Foreign used / Refurbished) -------------- */
+  --color-condition-new: var(--condition-new);
+  --color-condition-used: var(--condition-used);
+  --color-condition-refurb: var(--condition-refurb);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Motion. One scale, so a timing change is a one-line change. */
+  --ease-out-brand: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-drift: drift 18s ease-in-out infinite;
+}
+
+/*
+  ============================================================================
+  LIGHT — the default surface: catalogue, product detail, cart, checkout.
+  Values transcribed from the Behance reference (DESIGN.md §3).
+  ============================================================================
+*/
+:root {
+  /*
+    Brand constants — identical in both modes; they ARE the brand.
+
+    Sampled from the supplied logo (`public/gadgetsgardenlogo.svg`), which is
+    authoritative. An earlier pass derived a wider mint→magenta range from the
+    refracted-light streak in the Instagram post templates; the mark itself is
+    narrower and cooler — teal through indigo — so these were tightened to it.
+    Magenta and amber survive only in `--gg-aurora`, where that streak is what
+    is being evoked.
+  */
+  --gg-ink: #000000;
+  --gg-teal: #6eced3;
+  --gg-cyan: #5acbd1;
+  --gg-sky: #71c5df;
+  --gg-blue: #5e6fed;
+  --gg-indigo: #626bec;
+
+  /* Kept for the hero wash only — not part of the mark. */
+  --gg-magenta: #e85cc8;
+  --gg-amber: #f0a050;
+
+  /*
+    The signature gradient, running the mark's own hues in the mark's own order:
+    teal at the open end of the G, indigo at the tail.
+
+    Used on the logo, one hero element, and active states — deliberately nowhere
+    else. Applied to everything it stops meaning anything (DESIGN.md §2).
+  */
+  --gg-gradient: linear-gradient(
+    100deg,
+    var(--gg-teal) 0%,
+    var(--gg-cyan) 22%,
+    var(--gg-sky) 46%,
+    var(--gg-blue) 76%,
+    var(--gg-indigo) 100%
+  );
+
+  --background: #ffffff;
+  --foreground: #111111;
+
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+
+  /* Primary is near-black, not the brand blue — the reference's CTA is a solid
+     black pill, and blue is reserved for interactive//link affordances. */
+  --primary: #111111;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f4f4f4;
+  --secondary-foreground: #111111;
+
+  /* The product image tile, and the flat offer tiles. */
+  --muted: #f4f4f4;
+  --muted-foreground: #8a8a8a;
+
+  --accent: #f4f4f4;
+  --accent-foreground: #111111;
+
+  --destructive: #e23b3b;
+
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: var(--gg-blue);
+
+  --radius: 0.75rem;
+
+  /*
+    Condition badges. These carry real meaning to a buyer of used hardware —
+    "foreign used" is the whole business — so they are semantic tokens, not
+    ad-hoc classes chosen per component.
+
+    These are TEXT colours at 11–12px, so they are held to 4.5:1 against white,
+    and each was measured rather than eyeballed. The brand indigo itself only
+    reaches 4.22:1, so `used` is a darkened cousin — the badge reads as brand
+    blue without being illegible. An earlier green here sat at 3.45:1 and was a
+    genuine accessibility bug.
+
+      used   #4a56d4 → 5.88:1
+      new    #14874e → 4.56:1
+      refurb #6d3fd9 → 6.24:1
+  */
+  --condition-new: #14874e;
+  --condition-used: #4a56d4;
+  --condition-refurb: #6d3fd9;
+
+  --chart-1: var(--gg-blue);
+  --chart-2: var(--gg-indigo);
+  --chart-3: var(--gg-cyan);
+  --chart-4: var(--gg-magenta);
+  --chart-5: var(--gg-amber);
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #111111;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f4f4;
+  --sidebar-accent-foreground: #111111;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: var(--gg-blue);
+}
+
+/*
+  ============================================================================
+  DARK — the bookends: hero, promo banners, footer, order-confirmation.
+  A section wrapper, not a page theme. See the note at the top of this file.
+  ============================================================================
+*/
+.dark {
+  /*
+    Re-assert colour on the wrapper itself, not just the variable.
+
+    `body` is styled `color: var(--foreground)`, which the browser computes ONCE
+    to a literal colour; descendants then inherit that computed value. Entering a
+    `.dark` subtree re-points `--foreground` to white, but nothing re-evaluates
+    the inherited `color`, so text that does not carry its own colour class stays
+    near-black on black. Setting it here means any `class="dark"` section is
+    self-contained and legible by default.
+  */
+  color: var(--foreground);
+
+  --background: #000000;
+  --foreground: #ffffff;
+
+  /* Raised surfaces on black are white at low alpha rather than a fixed grey,
+     so a card sitting on the gradient picks the gradient up beneath it instead
+     of punching a flat grey hole in it. */
+  --card: color-mix(in srgb, #ffffff 6%, transparent);
+  --card-foreground: #ffffff;
+  --popover: #141414;
+  --popover-foreground: #ffffff;
+
+  /* Inverted: on black, the solid pill is white. */
+  --primary: #ffffff;
+  --primary-foreground: #111111;
+
+  --secondary: color-mix(in srgb, #ffffff 10%, transparent);
+  --secondary-foreground: #ffffff;
+
+  --muted: color-mix(in srgb, #ffffff 8%, transparent);
+  --muted-foreground: #a1a1a1;
+
+  --accent: color-mix(in srgb, #ffffff 12%, transparent);
+  --accent-foreground: #ffffff;
+
+  --destructive: #ff6b6b;
+
+  --border: color-mix(in srgb, #ffffff 14%, transparent);
+  --input: color-mix(in srgb, #ffffff 18%, transparent);
+  --ring: var(--gg-cyan);
+
+  /* Brighter on black — #1a9e5c fails contrast against pure black. */
+  --condition-new: #35d68a;
+  --condition-used: var(--gg-cyan);
+  --condition-refurb: #a98bff;
+
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #111111;
+  --sidebar-accent: color-mix(in srgb, #ffffff 12%, transparent);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: color-mix(in srgb, #ffffff 14%, transparent);
+  --sidebar-ring: var(--gg-cyan);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+
+  /*
+    Prices, spec figures and countdowns are compared down a column, so digits
+    must occupy identical width. Without this, ₦1,900,000 and ₦620,000 sit
+    ragged against each other in a grid.
+  */
+  :is(.gg-numeric, [data-numeric]) {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}
+
+@layer utilities {
+  /* The gradient as text. Needs a background-clip fallback colour so the text
+     is not invisible if the clip is unsupported. */
+  .gg-gradient-text {
+    background: var(--gg-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* A 1px gradient hairline — the active-filter underline, section rules. */
+  .gg-gradient-rule {
+    background: var(--gg-gradient);
+    height: 1px;
+    border: 0;
+  }
+
+  /* Gradient outline on an arbitrary element, without a wrapper div. */
+  .gg-gradient-border {
+    position: relative;
+    isolation: isolate;
+  }
+  .gg-gradient-border::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--gg-gradient);
+
+    /*
+      Punch the middle out so only the 1px ring paints.
+
+      Order matters and is not arbitrary: the `-webkit-mask` SHORTHAND resets
+      the composite property, so a standard `mask-composite` declared before it
+      is silently undone and the whole shape fills solid. Prefixed pair first,
+      standard pair last, so the spec-compliant value is what survives.
+    */
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+
+    pointer-events: none;
+
+    /*
+      Behind the content, not over it. A positioned pseudo-element otherwise
+      paints above the element's own non-positioned text and hides it. The
+      `isolation: isolate` on the parent is what keeps this -1 from dropping
+      through to the page background.
+    */
+    z-index: -1;
+  }
+
+  /* The refracted-light wash behind the hero, echoing the post templates. */
+  .gg-aurora {
+    background-image:
+      radial-gradient(
+        ellipse 70% 55% at 18% 30%,
+        color-mix(in srgb, var(--gg-indigo) 42%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        ellipse 60% 50% at 78% 25%,
+        color-mix(in srgb, var(--gg-blue) 38%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        ellipse 65% 45% at 50% 85%,
+        color-mix(in srgb, var(--gg-magenta) 30%, transparent),
+        transparent 70%
+      );
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -2%, 0) scale(1.06);
+  }
+}
+
+/*
+  One global honour of the OS setting, so no individual component has to
+  remember. Framer Motion is told separately via MotionConfig (see
+  components/motion/motion-provider.tsx) — CSS alone cannot stop a JS animation.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

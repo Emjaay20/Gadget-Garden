@@ -1,0 +1,16 @@
+# One tick of Laravel's scheduler. Fired by the timer, not run continuously.
+
+[Unit]
+Description=Gadgets Garden — scheduler tick
+
+[Service]
+Type=oneshot
+User=deploy
+WorkingDirectory=/srv/gadgetsgarden/backend
+ExecStart=/usr/bin/php artisan schedule:run
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/gadgetsgarden/backend/storage

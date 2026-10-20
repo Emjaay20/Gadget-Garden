@@ -1,0 +1,25 @@
+{
+  "name": "gadgetsgarden-ai-agent",
+  "version": "1.0.0",
+  "description": "Autonomous AI Store Assistant & Tool-Calling Agent for Gadgets Garden Computer Village inventory",
+  "main": "dist/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "node --import tsx --test tests/**/*.test.ts"
+  },
+  "keywords": ["ai-agent", "typescript", "node", "polyglot", "ecommerce"],
+  "author": "Gadgets Garden",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}
