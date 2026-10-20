@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -e
+
+export PATH="/usr/lib/postgresql/16/bin:/usr/lib/postgresql/15/bin:$PATH"
+
+echo "==> [Gadgets Garden] Booting container..."
+
+# 1. Ensure storage and cache permissions
+mkdir -p /app/backend/storage/app/public/products
+mkdir -p /app/backend/storage/framework/{cache,sessions,views}
+mkdir -p /app/backend/storage/logs
+mkdir -p /app/backend/bootstrap/cache
+chown -R www-data:www-data /app/backend/storage /app/backend/bootstrap/cache
+chmod -R 775 /app/backend/storage /app/backend/bootstrap/cache
+
+# 2. Database Initialization
+export PGDATA="/var/lib/postgresql/data"
+mkdir -p "$PGDATA"
+chown -R postgres:postgres "$PGDATA" /var/run/postgresql
+chmod 700 "$PGDATA"
+
+PG_BIN="$(find /usr/lib/postgresql -name initdb | head -n 1 | xargs dirname)"
+
+if [ ! -s "$PGDATA/PG_VERSION" ]; then
+    echo "==> [Gadgets Garden] Initializing new PostgreSQL cluster in $PGDATA using $PG_BIN..."
+    su - postgres -c "$PG_BIN/initdb -D $PGDATA --auth-local=trust --auth-host=md5"
+fi
+
+echo "==> [Gadgets Garden] Starting PostgreSQL server..."
+su - postgres -c "$PG_BIN/pg_ctl -D $PGDATA -l $PGDATA/postgresql.log start"
+
+# Wait for PostgreSQL
+until su - postgres -c "$PG_BIN/pg_isready -q"; do
+    echo "    Waiting for PostgreSQL to be ready..."
+    sleep 1
+done
+echo "==> [Gadgets Garden] PostgreSQL is ready."
+
+# Provision database and user
+DB_NAME="${DB_DATABASE:-gadgetsgarden}"
+DB_USER="${DB_USERNAME:-gadget_user}"
+DB_PASS="${DB_PASSWORD:-gadget_secure_password_2026}"
+
+su - postgres -c "$PG_BIN/psql -tc \"SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'\" | grep -q 1 || $PG_BIN/psql -c \"CREATE DATABASE $DB_NAME;\""
+su - postgres -c "$PG_BIN/psql -tc \"SELECT 1 FROM pg_roles WHERE rolname = '$DB_USER'\" | grep -q 1 || $PG_BIN/psql -c \"CREATE USER $DB_USER WITH ENCRYPTED PASSWORD '$DB_PASS';\""
+su - postgres -c "$PG_BIN/psql -c \"GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;\""
+su - postgres -c "$PG_BIN/psql -d $DB_NAME -c \"GRANT ALL ON SCHEMA public TO $DB_USER;\""
+su - postgres -c "$PG_BIN/psql -d $DB_NAME -c \"ALTER DATABASE $DB_NAME OWNER TO $DB_USER;\""
+
+# 3. Laravel Environment Setup
+cd /app/backend
+
+cat <<EOF > .env
+APP_NAME="Gadgets Garden"
+APP_ENV=production
+APP_KEY=${APP_KEY:-base64:7kS9y3hE6s7xX8lK5rQ1vZ2mP0oN9bA3cV8fG4tH1jI=}
+APP_DEBUG=false
+APP_URL=${APP_URL:-http://localhost}
+
+DB_CONNECTION=pgsql
+DB_HOST=${DB_HOST:-127.0.0.1}
+DB_PORT=${DB_PORT:-5432}
+DB_DATABASE=$DB_NAME
+DB_USERNAME=$DB_USER
+DB_PASSWORD=$DB_PASS
+
+BROADCAST_CONNECTION=log
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+SESSION_DRIVER=database
+
+SHOP_PAYMENT_PROVIDER=mock
+EOF
+chown www-data:www-data .env
+
+# Ensure APP_KEY exists
+if grep -q "APP_KEY=$" .env || grep -q "APP_KEY=base64:7kS9y3hE6s7xX8lK5rQ1vZ2mP0oN9bA3cV8fG4tH1jI=" .env; then
+    php artisan key:generate --force
+fi
+
+echo "==> [Gadgets Garden] Running database migrations..."
+php artisan migrate --force
+
+echo "==> [Gadgets Garden] Seeding roles and permissions..."
+php artisan db:seed --class=RolePermissionSeeder --force
+
+echo "==> [Gadgets Garden] Ensuring owner account exists..."
+OWNER_EMAIL="${OWNER_EMAIL:-owner@gadgetsgarden.ng}"
+OWNER_PASS="${OWNER_PASSWORD:-AdminPassword123!}"
+OWNER_NAME="${OWNER_NAME:-Store Owner}"
+
+php artisan tinker --execute="
+\$email = '$OWNER_EMAIL';
+\$pass = '$OWNER_PASS';
+\$name = '$OWNER_NAME';
+if (!\App\Models\User::where('email', \$email)->exists()) {
+    \$u = new \App\Models\User();
+    \$u->name = \$name;
+    \$u->email = \$email;
+    \$u->password = bcrypt(\$pass);
+    \$u->is_active = true;
+    \$u->save();
+    \$u->assignRole(\App\Support\Permissions::OWNER);
+    echo 'Created owner: ' . \$email . PHP_EOL;
+} else {
+    echo 'Owner already exists: ' . \$email . PHP_EOL;
+}
+"
+
+echo "==> [Gadgets Garden] Linking storage..."
+php artisan storage:link 2>/dev/null || true
+
+# Cache routes and config
+php artisan config:cache
+php artisan route:cache
+php artisan event:cache
+
+echo "==> [Gadgets Garden] Starting Supervisor (Nginx, PHP-FPM, Next.js Backoffice, Queue)..."
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
