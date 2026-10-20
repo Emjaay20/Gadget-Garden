@@ -43,6 +43,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+function YoutubeIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+  );
+}
+
+function getYouTubeVideoId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i,
+  );
+  return match ? match[1] : null;
+}
+
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
   const product = await getProduct(slug);
@@ -50,6 +66,8 @@ export default async function ProductPage({ params }: Props) {
   if (!product) {
     notFound();
   }
+
+  const youtubeVideoId = getYouTubeVideoId(product.youtube_url);
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
@@ -69,11 +87,21 @@ export default async function ProductPage({ params }: Props) {
             {product.name}
           </h1>
 
-          {product.condition && (
-            <div className="mt-4">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {product.condition && (
               <ConditionBadge condition={product.condition} />
-            </div>
-          )}
+            )}
+            {product.properties && product.properties.length > 0 && (
+              product.properties.map((prop) => (
+                <span
+                  key={prop}
+                  className="inline-flex items-center rounded-full bg-secondary/80 px-2.5 py-0.5 text-xs font-medium text-secondary-foreground border border-border"
+                >
+                  {prop}
+                </span>
+              ))
+            )}
+          </div>
 
           {product.short_description && (
             <p className="text-muted-foreground mt-4 text-pretty">
@@ -127,6 +155,37 @@ export default async function ProductPage({ params }: Props) {
               </li>
             ))}
           </ul>
+        </Reveal>
+      )}
+
+      {youtubeVideoId && (
+        <Reveal className="mt-20">
+          <div className="flex items-center gap-2.5 mb-4">
+            <YoutubeIcon className="size-5 text-red-600" />
+            <h2 className="text-xs font-semibold tracking-[0.18em] uppercase">
+              Video Review & Walkthrough
+            </h2>
+          </div>
+          <div className="relative aspect-video w-full max-w-4xl overflow-hidden rounded-2xl border border-border bg-black/5 shadow-md">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${youtubeVideoId}`}
+              title={`${product.name} Video Review`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="absolute inset-0 h-full w-full border-0"
+            />
+          </div>
+        </Reveal>
+      )}
+
+      {product.description && (
+        <Reveal className="mt-20">
+          <h2 className="text-xs font-semibold tracking-[0.18em] uppercase">
+            Overview & Specifications
+          </h2>
+          <div className="mt-4 rounded-xl border border-border p-6 text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+            {product.description}
+          </div>
         </Reveal>
       )}
     </div>

@@ -60,6 +60,8 @@ export type Product = {
 
   short_description: string | null;
   description?: string | null;
+  youtube_url?: string | null;
+  properties?: string[];
   highlights: string[];
   base_specs: UnitSpecs;
   /** Specs of the machine whose price is being shown — what the card prints. */

@@ -44,7 +44,9 @@ class ProductResource extends JsonResource
 
             'short_description' => $this->short_description,
             'description' => $this->whenNotNull($this->description),
+            'youtube_url' => $this->youtube_url,
             'highlights' => $this->highlights ?? [],
+            'properties' => $this->properties ?? [],
             'base_specs' => $this->base_specs ?? [],
 
             /*

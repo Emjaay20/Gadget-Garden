@@ -130,8 +130,13 @@ class InventoryController extends Controller
             'low_stock_threshold' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'short_description' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'youtube_url' => ['nullable', 'string', 'max:255'],
+            'properties' => ['nullable', 'array'],
+            'properties.*' => ['string', 'max:50'],
             'highlights' => ['nullable', 'array'],
             'highlights.*' => ['string', 'max:255'],
+            'images' => ['nullable', 'array'],
+            'images.*' => ['string', 'max:2048'],
             'auto_enrich' => ['nullable', 'boolean'],
         ]);
 
@@ -160,6 +165,8 @@ class InventoryController extends Controller
             'category_id' => $validated['category_id'],
             'short_description' => $validated['short_description'] ?? null,
             'description' => $validated['description'] ?? null,
+            'youtube_url' => $validated['youtube_url'] ?? null,
+            'properties' => $validated['properties'] ?? null,
             'highlights' => $validated['highlights'] ?? null,
             'warranty_months' => $validated['warranty_months'] ?? ($isUnit ? 3 : 1),
             'low_stock_threshold' => $validated['low_stock_threshold'] ?? ($isUnit ? 2 : 5),
@@ -173,6 +180,19 @@ class InventoryController extends Controller
         }
 
         $product->save();
+
+        // Attach direct images if provided
+        if (! empty($validated['images'])) {
+            foreach ($validated['images'] as $idx => $img) {
+                if (! empty($img)) {
+                    $product->images()->create([
+                        'path' => $img,
+                        'alt' => $product->name,
+                        'position' => $idx + 1,
+                    ]);
+                }
+            }
+        }
 
         // If stocked product with opening stock requested, record double-entry restock movement
         if (! $isUnit && ! empty($validated['opening_stock']) && $validated['opening_stock'] > 0) {
@@ -238,6 +258,9 @@ class InventoryController extends Controller
             'low_stock_threshold' => ['sometimes', 'integer', 'min:0', 'max:1000'],
             'short_description' => ['sometimes', 'nullable', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string'],
+            'youtube_url' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'properties' => ['sometimes', 'nullable', 'array'],
+            'properties.*' => ['string', 'max:50'],
             'highlights' => ['sometimes', 'nullable', 'array'],
             'highlights.*' => ['string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],

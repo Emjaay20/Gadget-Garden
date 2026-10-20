@@ -149,6 +149,8 @@ export type Product = {
   category?: { id: string; slug: string; name: string };
   short_description: string | null;
   description?: string | null;
+  youtube_url?: string | null;
+  properties?: string[];
   highlights?: string[];
   summary_specs: UnitSpecs;
   warranty_months: number;

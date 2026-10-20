@@ -109,16 +109,21 @@ class ProductEnrichmentController extends Controller
             'highlights' => $generatedCopy['highlights'],
         ]);
 
-        $maxPosition = (int) $product->images()->max('position');
+        $hasExistingImages = $product->images()->exists();
         $attached = 0;
-        foreach (array_slice($imageCandidates, 0, 3) as $candidate) {
-            $maxPosition++;
-            $product->images()->create([
-                'path' => $candidate['url'],
-                'alt' => "{$product->name} official photography",
-                'position' => $maxPosition,
-            ]);
-            $attached++;
+
+        // If the product doesn't already have images uploaded by staff, attach AI candidates
+        if (! $hasExistingImages) {
+            $maxPosition = (int) $product->images()->max('position');
+            foreach (array_slice($imageCandidates, 0, 3) as $candidate) {
+                $maxPosition++;
+                $product->images()->create([
+                    'path' => $candidate['url'],
+                    'alt' => "{$product->name} official photography",
+                    'position' => $maxPosition,
+                ]);
+                $attached++;
+            }
         }
 
         AuditLogger::log(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -10,7 +10,19 @@ import {
   Package,
   ShieldCheck,
   Tag,
+  Image as ImageIcon,
+  X,
+  Upload,
+  Link as LinkIcon,
 } from "lucide-react";
+
+function YoutubeIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+  );
+}
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +51,8 @@ const POPULAR_BRANDS = [
   "Dell",
   "Lenovo",
   "Apple",
+  "Microsoft Surface",
+  "Microsoft",
   "ASUS",
   "Acer",
   "Alienware",
@@ -47,8 +61,20 @@ const POPULAR_BRANDS = [
   "Logitech",
 ];
 
+const AVAILABLE_PROPERTIES = [
+  "Touch screen",
+  "2 in 1",
+  "Detachable",
+  "Standard Clamshell",
+];
+
+type ImageEntry =
+  | { id: string; type: "file"; file: File; preview: string }
+  | { id: string; type: "url"; url: string; preview: string };
+
 export function AddProductDialog() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
@@ -66,6 +92,10 @@ export function AddProductDialog() {
   const [lowStockThreshold, setLowStockThreshold] = useState<string>("2");
   const [autoEnrich, setAutoEnrich] = useState(true);
   const [shortDescription, setShortDescription] = useState("");
+  const [properties, setProperties] = useState<string[]>([]);
+  const [youtubeUrl, setYoutubeUrl] = useState<string>("");
+  const [images, setImages] = useState<ImageEntry[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState<string>("");
 
   // Load categories when dialog opens
   useEffect(() => {
@@ -100,6 +130,55 @@ export function AddProductDialog() {
     }
   }
 
+  function toggleProperty(prop: string) {
+    setProperties((prev) =>
+      prev.includes(prop) ? prev.filter((p) => p !== prop) : [...prev, prop],
+    );
+  }
+
+  function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const newEntries: ImageEntry[] = Array.from(e.target.files).map((file) => ({
+      id: Math.random().toString(36).substring(2, 9),
+      type: "file",
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setImages((prev) => [...prev, ...newEntries]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function handleAddImageUrl() {
+    const url = imageUrlInput.trim();
+    if (!url) return;
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      toast.error("Please enter a valid URL starting with http:// or https://");
+      return;
+    }
+    setImages((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substring(2, 9),
+        type: "url",
+        url,
+        preview: url,
+      },
+    ]);
+    setImageUrlInput("");
+  }
+
+  function handleRemoveImage(id: string) {
+    setImages((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target && target.type === "file") {
+        URL.revokeObjectURL(target.preview);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -127,6 +206,10 @@ export function AddProductDialog() {
     setLoading(true);
 
     try {
+      const imageUrls = images
+        .filter((img): img is Extract<ImageEntry, { type: "url" }> => img.type === "url")
+        .map((img) => img.url);
+
       const payload: Record<string, unknown> = {
         name: name.trim(),
         brand: brand.trim(),
@@ -136,6 +219,18 @@ export function AddProductDialog() {
         low_stock_threshold: parseInt(lowStockThreshold, 10) || 2,
         auto_enrich: autoEnrich,
       };
+
+      if (properties.length > 0) {
+        payload.properties = properties;
+      }
+
+      if (youtubeUrl.trim()) {
+        payload.youtube_url = youtubeUrl.trim();
+      }
+
+      if (imageUrls.length > 0) {
+        payload.images = imageUrls;
+      }
 
       if (shortDescription.trim()) {
         payload.short_description = shortDescription.trim();
@@ -163,6 +258,28 @@ export function AddProductDialog() {
         throw new Error(json.message ?? "Could not create product.");
       }
 
+      // If any local files were selected, upload them now to the product
+      const fileImages = images.filter(
+        (img): img is Extract<ImageEntry, { type: "file" }> => img.type === "file",
+      );
+      if (fileImages.length > 0 && json.data?.slug) {
+        for (const item of fileImages) {
+          try {
+            const fd = new FormData();
+            fd.append("image", item.file);
+            await fetch(
+              `/admin/api/inventory/${encodeURIComponent(json.data.slug)}/images`,
+              {
+                method: "POST",
+                body: fd,
+              },
+            );
+          } catch {
+            // continue with remaining files
+          }
+        }
+      }
+
       toast.success(
         autoEnrich
           ? `Product "${name}" created with AI photos & SEO!`
@@ -187,6 +304,9 @@ export function AddProductDialog() {
   }
 
   function resetForm() {
+    images.forEach((img) => {
+      if (img.type === "file") URL.revokeObjectURL(img.preview);
+    });
     setName("");
     setBrand("");
     setKind("unit");
@@ -194,6 +314,10 @@ export function AddProductDialog() {
     setCompareAtPrice("");
     setOpeningStock("0");
     setShortDescription("");
+    setProperties([]);
+    setYoutubeUrl("");
+    setImages([]);
+    setImageUrlInput("");
     setAutoEnrich(true);
   }
 
@@ -284,7 +408,7 @@ export function AddProductDialog() {
             </Label>
             <Input
               id="brand"
-              placeholder="e.g. HP, Dell, Apple, Lenovo"
+              placeholder="e.g. HP, Dell, Apple, Lenovo, Microsoft Surface"
               value={brand}
               onChange={(e) => setBrand(e.target.value)}
               required
@@ -305,6 +429,138 @@ export function AddProductDialog() {
                 </button>
               ))}
             </div>
+            <p className="text-[11px] text-muted-foreground pt-0.5">
+              💡 Any custom brand you type here will automatically be registered and searchable across the store.
+            </p>
+          </div>
+
+          {/* Properties / Form Factor */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">
+              Properties / Form Factor (Optional)
+            </Label>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {AVAILABLE_PROPERTIES.map((prop) => {
+                const active = properties.includes(prop);
+                return (
+                  <button
+                    type="button"
+                    key={prop}
+                    onClick={() => toggleProperty(prop)}
+                    className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                      active
+                        ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 ring-1 ring-emerald-600"
+                        : "border-border hover:bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {active ? "✓ " : "+ "}
+                    {prop}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Select key design traits (e.g. 2 in 1 convertible, Touch screen, Detachable tablet).
+            </p>
+          </div>
+
+          {/* YouTube Video Review */}
+          <div className="space-y-1.5">
+            <Label htmlFor="youtube-url" className="text-xs font-semibold flex items-center gap-1.5">
+              <YoutubeIcon className="size-3.5 text-red-600" />
+              YouTube Video Review URL (Optional)
+            </Label>
+            <Input
+              id="youtube-url"
+              placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Streams directly from YouTube on the customer product page with zero hosting overhead.
+            </p>
+          </div>
+
+          {/* Direct Product Photos & URL input */}
+          <div className="space-y-2 rounded-lg border border-border/80 bg-muted/15 p-3.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <ImageIcon className="size-3.5 text-emerald-600" />
+                Product Photos (Optional)
+              </Label>
+              <span className="text-[11px] text-muted-foreground">
+                {images.length > 0 ? `${images.length} added` : "AI auto-fills if empty"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Upload local photos or paste image URLs. If left empty, AI discovery will automatically find official studio photos for this model.
+            </p>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFilesSelected}
+            />
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="size-3" />
+                Upload Photos
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Input
+                placeholder="Or paste direct image URL (https://...)"
+                value={imageUrlInput}
+                onChange={(e) => setImageUrlInput(e.target.value)}
+                className="h-8 text-xs"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="h-8 text-xs shrink-0 gap-1"
+                onClick={handleAddImageUrl}
+              >
+                <Plus className="size-3" />
+                Add URL
+              </Button>
+            </div>
+
+            {images.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {images.map((img) => (
+                  <div
+                    key={img.id}
+                    className="group relative size-16 overflow-hidden rounded-md border border-border bg-background shadow-xs"
+                  >
+                    <img
+                      src={img.preview}
+                      alt="Product preview"
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(img.id)}
+                      className="absolute top-1 right-1 flex size-4 items-center justify-center rounded-full bg-black/70 text-white transition-opacity hover:bg-black"
+                      title="Remove image"
+                    >
+                      <X className="size-2.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Category Selector */}

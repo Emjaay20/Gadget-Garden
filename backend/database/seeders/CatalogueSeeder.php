@@ -43,9 +43,10 @@ class CatalogueSeeder extends Seeder
     private function seedCategories(): array
     {
         $rows = [
-            ['laptops', 'Laptops', 'Premium new and foreign-used laptops for work, school and gaming.', 1],
-            ['gaming', 'Gaming laptops', 'High-refresh machines with discrete graphics.', 2],
-            ['accessories', 'Accessories', 'Chargers, bags, mice and everything in between.', 3],
+            ['workstation', 'Workstation', 'Heavy-duty rendering, CAD and engineering laptops.', 1],
+            ['gaming-laptop', 'Gaming laptop', 'High-refresh displays and discrete graphics.', 2],
+            ['business-laptop', 'Business laptop', 'Ultrabooks and productivity machines for work and school.', 3],
+            ['accessories', 'Accessories', 'Chargers, bags, cables, mice and adapters.', 4],
         ];
 
         $categories = [];

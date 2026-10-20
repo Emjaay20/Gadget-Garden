@@ -10,7 +10,16 @@ import {
   Trash2,
   Sparkles,
   CheckCircle2,
+  Layers,
 } from "lucide-react";
+
+function YoutubeIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+  );
+}
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +31,21 @@ import type { Product } from "@/lib/types";
 type Props = {
   product: Product;
 };
+
+const AVAILABLE_PROPERTIES = [
+  "Touch screen",
+  "2 in 1",
+  "Detachable",
+  "Standard Clamshell",
+];
+
+function getYouTubeVideoId(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i,
+  );
+  return match ? match[1] : null;
+}
 
 export function ProductDetailsEditor({ product }: Props) {
   const router = useRouter();
@@ -41,6 +65,16 @@ export function ProductDetailsEditor({ product }: Props) {
   const [warrantyMonths, setWarrantyMonths] = useState(
     String(product.warranty_months ?? 3),
   );
+  const [properties, setProperties] = useState<string[]>(
+    product.properties ?? [],
+  );
+  const [youtubeUrl, setYoutubeUrl] = useState(product.youtube_url ?? "");
+
+  function toggleProperty(prop: string) {
+    setProperties((prev) =>
+      prev.includes(prop) ? prev.filter((p) => p !== prop) : [...prev, prop],
+    );
+  }
 
   function handleAddHighlight() {
     if (highlights.length < 8) {
@@ -75,6 +109,8 @@ export function ProductDetailsEditor({ product }: Props) {
         description: description.trim() || null,
         highlights: filteredHighlights,
         warranty_months: parseInt(warrantyMonths, 10) || 0,
+        properties: properties.length > 0 ? properties : null,
+        youtube_url: youtubeUrl.trim() || null,
       };
 
       const res = await fetch(`/admin/api/inventory/${encodeURIComponent(product.slug)}`, {
@@ -161,6 +197,65 @@ export function ProductDetailsEditor({ product }: Props) {
               placeholder="e.g. Targus"
             />
           </div>
+        </div>
+
+        {/* Properties / Form Factor */}
+        <div className="space-y-1.5 pt-1">
+          <Label className="text-xs font-semibold flex items-center gap-1.5">
+            <Layers className="size-3.5 text-emerald-600" />
+            Properties / Form Factor
+          </Label>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {AVAILABLE_PROPERTIES.map((prop) => {
+              const active = properties.includes(prop);
+              return (
+                <button
+                  type="button"
+                  key={prop}
+                  onClick={() => toggleProperty(prop)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    active
+                      ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 ring-1 ring-emerald-600"
+                      : "border-border hover:bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {active ? "✓ " : "+ "}
+                  {prop}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Highlights device design factors (e.g. 2 in 1 convertible, Touch screen, Detachable) on product badges.
+          </p>
+        </div>
+
+        {/* YouTube Review Video */}
+        <div className="space-y-2 rounded-lg border border-border/80 bg-muted/15 p-3.5">
+          <Label htmlFor="edit-youtube" className="text-xs font-semibold flex items-center gap-1.5">
+            <YoutubeIcon className="size-3.5 text-red-600" />
+            YouTube Review Video URL
+          </Label>
+          <Input
+            id="edit-youtube"
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
+            className="text-xs"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Customer sees an embedded 16:9 review player on the storefront without our servers streaming video.
+          </p>
+          {getYouTubeVideoId(youtubeUrl) && (
+            <div className="relative mt-2 aspect-video max-w-md overflow-hidden rounded-lg border border-border bg-black">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${getYouTubeVideoId(youtubeUrl)}`}
+                title="Review preview"
+                className="h-full w-full"
+                allowFullScreen
+              />
+            </div>
+          )}
         </div>
 
         {/* Short Description */}
