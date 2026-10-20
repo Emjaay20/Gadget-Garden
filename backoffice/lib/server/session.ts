@@ -29,7 +29,8 @@ export async function getToken(): Promise<string | null> {
   // `cookies()` is async in Next 16 — synchronous access was removed.
   const jar = await cookies();
 
-  return jar.get(COOKIE)?.value ?? null;
+  const raw = jar.get(COOKIE)?.value ?? null;
+  return raw ? decodeURIComponent(raw) : null;
 }
 
 export async function setToken(token: string): Promise<void> {
