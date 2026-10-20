@@ -1,6 +1,19 @@
 import { redirect } from "next/navigation";
 
-/** The backoffice has no landing page — staff want the fulfilment queue. */
-export default function Home() {
-  redirect("/orders");
+import { api } from "@/lib/server/api";
+import { getToken } from "@/lib/server/session";
+
+/** The backoffice root redirects to /orders if logged in, otherwise /login. */
+export default async function Home() {
+  const token = await getToken();
+  if (token) {
+    try {
+      await api("/me");
+      redirect("/orders");
+    } catch {
+      // Invalid token
+    }
+  }
+
+  redirect("/login");
 }

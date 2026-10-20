@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/login-form";
+import { api } from "@/lib/server/api";
 import { getToken } from "@/lib/server/session";
 
 export const metadata: Metadata = {
@@ -10,9 +11,17 @@ export const metadata: Metadata = {
 };
 
 export default async function LoginPage() {
-  // Already signed in — no reason to show a login form.
-  if (await getToken()) {
-    redirect("/orders");
+  // Only redirect if the staff token is present AND still valid in the backend.
+  // If the token has expired, been revoked, or is stale, we swallow the error
+  // and display the login form so the user can sign in without a redirect loop.
+  const token = await getToken();
+  if (token) {
+    try {
+      await api("/me");
+      redirect("/orders");
+    } catch {
+      // Stale or invalid session — fall through to render the sign-in form.
+    }
   }
 
   return (
