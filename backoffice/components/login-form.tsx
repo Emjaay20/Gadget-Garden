@@ -56,10 +56,9 @@ export function LoginForm() {
       return;
     }
 
-    // `refresh()` before `push()` so the layout re-reads the new session cookie
-    // rather than rendering the dashboard from a cached signed-out tree.
-    router.refresh();
-    router.push("/orders");
+    // Hard navigate to /admin/inventory so the browser attaches the cookie cleanly
+    // and loads the full dashboard without client-side RSC cache races.
+    window.location.href = "/admin/inventory";
   }
 
   return (

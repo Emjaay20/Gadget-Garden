@@ -18,7 +18,7 @@ export default async function LoginPage() {
   if (token) {
     try {
       await api("/me");
-      redirect("/orders");
+      redirect("/inventory");
     } catch {
       // Stale or invalid session — fall through to render the sign-in form.
     }

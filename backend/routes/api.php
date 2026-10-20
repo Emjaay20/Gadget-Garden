@@ -10,6 +10,8 @@ use App\Http\Controllers\Backoffice\ProductEnrichmentController;
 use App\Http\Controllers\Backoffice\ReportsController;
 use App\Http\Controllers\Shop\AiAssistantController;
 use App\Http\Controllers\Shop\CatalogueController;
+use App\Http\Controllers\Shop\CouponController;
+use App\Http\Controllers\Shop\CustomerAuthController;
 use App\Http\Controllers\Shop\OfferController as ShopOfferController;
 use App\Http\Controllers\Shop\OrderController;
 use App\Http\Controllers\Shop\PaymentController;
@@ -54,10 +56,28 @@ Route::middleware('throttle:60,1')->prefix('shop')->group(function () {
     // Re-prices and re-checks a cart. Not a mutation, despite the verb.
     Route::post('/cart', [OrderController::class, 'validateCart']);
 
+    // Promo code validation
+    Route::post('/coupons/validate', [CouponController::class, 'validateCoupon']);
+
+    // Customer auth (public)
+    Route::post('/auth/register', [CustomerAuthController::class, 'register']);
+    Route::post('/auth/login', [CustomerAuthController::class, 'login']);
+
     Route::get('/orders/{reference}', [OrderController::class, 'show']);
 
     // AI Store Assistant (Laptop Matchmaker)
     Route::post('/ai/recommend', [AiAssistantController::class, 'recommend']);
+});
+
+/*
+| Authenticated Customer Portal.
+*/
+Route::middleware(['auth:sanctum'])->prefix('shop')->group(function () {
+    Route::get('/auth/me', [CustomerAuthController::class, 'me']);
+    Route::post('/auth/logout', [CustomerAuthController::class, 'logout']);
+    Route::get('/customer/orders', [CustomerAuthController::class, 'orders']);
+    Route::get('/customer/orders/{reference}', [CustomerAuthController::class, 'order']);
+    Route::post('/customer/addresses', [CustomerAuthController::class, 'saveAddress']);
 });
 
 /*
@@ -104,8 +124,8 @@ Route::post(
 );
 
 Route::post('/login', [AuthController::class, 'login'])
-    // Brute-force ceiling: generous for a human, useless for a script.
-    ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:6,1');
+    // Brute-force ceiling: 30/min prevents locking out staff while protecting against automated attacks.
+    ->middleware(app()->environment('local') ? 'throttle:60,1' : 'throttle:30,1');
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);

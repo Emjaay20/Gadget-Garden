@@ -50,10 +50,25 @@ su - postgres -c "$PG_BIN/psql -d $DB_NAME -c \"ALTER DATABASE $DB_NAME OWNER TO
 # 3. Laravel Environment Setup
 cd /app/backend
 
+EXISTING_KEY=""
+if [ -f .env ] && grep -q "^APP_KEY=base64:" .env; then
+    EXISTING_KEY="$(grep "^APP_KEY=" .env | cut -d= -f2-)"
+fi
+
+if [ -n "$APP_KEY" ]; then
+    ACTIVE_KEY="$APP_KEY"
+elif [ -n "$EXISTING_KEY" ]; then
+    ACTIVE_KEY="$EXISTING_KEY"
+elif [ -f /var/lib/postgresql/data/.app_key ]; then
+    ACTIVE_KEY="$(cat /var/lib/postgresql/data/.app_key)"
+else
+    ACTIVE_KEY="base64:YAkmExFxaiCw9utyZE7J22jlMW5qTj4psnhNNTXHsDg="
+fi
+
 cat <<EOF > .env
 APP_NAME="Gadgets Garden"
 APP_ENV=production
-APP_KEY=${APP_KEY:-base64:7kS9y3hE6s7xX8lK5rQ1vZ2mP0oN9bA3cV8fG4tH1jI=}
+APP_KEY=$ACTIVE_KEY
 APP_DEBUG=false
 APP_URL=${APP_URL:-http://localhost}
 
@@ -73,10 +88,8 @@ SHOP_PAYMENT_PROVIDER=mock
 EOF
 chown www-data:www-data .env
 
-# Ensure APP_KEY exists
-if grep -q "APP_KEY=$" .env || grep -q "APP_KEY=base64:7kS9y3hE6s7xX8lK5rQ1vZ2mP0oN9bA3cV8fG4tH1jI=" .env; then
-    php artisan key:generate --force
-fi
+# Save active key for persistence across container restarts
+echo "$ACTIVE_KEY" > /var/lib/postgresql/data/.app_key 2>/dev/null || true
 
 echo "==> [Gadgets Garden] Running database migrations..."
 php artisan migrate --force
