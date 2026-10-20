@@ -271,6 +271,52 @@ class InventoryController extends Controller
         ]);
     }
 
+    /**
+     * DELETE /api/inventory/{product:slug}
+     *
+     * Soft delete a product catalogue listing and remove unsold inventory units.
+     */
+    public function destroy(Request $request, Product $product): JsonResponse
+    {
+        $hasReserved = $product->units()->where('status', ProductUnit::STATUS_RESERVED)->exists();
+        if ($hasReserved) {
+            throw ValidationException::withMessages([
+                'product' => ['This product has units currently reserved in active orders and cannot be deleted.'],
+            ]);
+        }
+
+        $productName = $product->name;
+        $productSlug = $product->slug;
+
+        DB::transaction(function () use ($product, $productName, $productSlug) {
+            // Clean up available, faulty, or returned machines that haven't been sold
+            $product->units()->whereIn('status', [
+                ProductUnit::STATUS_AVAILABLE,
+                ProductUnit::STATUS_FAULTY,
+                ProductUnit::STATUS_RETURNED,
+            ])->delete();
+
+            // Soft delete product listing
+            $product->delete();
+
+            AuditLogger::log(
+                action: 'product_deleted',
+                description: "Deleted product listing {$productName} ({$productSlug})",
+                auditable: $product,
+                oldValues: [
+                    'name' => $productName,
+                    'slug' => $productSlug,
+                    'brand' => $product->brand,
+                    'kind' => $product->kind,
+                ]
+            );
+        });
+
+        return response()->json([
+            'message' => "Product '{$productName}' deleted successfully.",
+        ]);
+    }
+
 
 
     /**
@@ -406,6 +452,49 @@ class InventoryController extends Controller
 
         return response()->json([
             'data' => (new ProductUnitResource($unit->fresh()))->forStaff()->resolve($request),
+        ]);
+    }
+
+    /**
+     * DELETE /api/inventory/units/{unit:sku}
+     *
+     * Delete an individual machine unit (if not already sold or reserved).
+     */
+    public function destroyUnit(Request $request, ProductUnit $unit): JsonResponse
+    {
+        if ($unit->status === ProductUnit::STATUS_SOLD) {
+            throw ValidationException::withMessages([
+                'unit' => ['This machine has already been sold and cannot be deleted.'],
+            ]);
+        }
+
+        if ($unit->status === ProductUnit::STATUS_RESERVED) {
+            throw ValidationException::withMessages([
+                'unit' => ['This machine is currently reserved in an active order and cannot be deleted.'],
+            ]);
+        }
+
+        $sku = $unit->sku;
+        $product = $unit->product;
+
+        DB::transaction(function () use ($unit, $sku, $product) {
+            AuditLogger::log(
+                action: 'unit_deleted',
+                description: "Deleted machine unit {$sku} from product {$product?->name}",
+                auditable: $unit,
+                oldValues: [
+                    'sku' => $sku,
+                    'serial' => $unit->serial,
+                    'status' => $unit->status,
+                    'price' => $unit->price,
+                ]
+            );
+
+            $unit->delete();
+        });
+
+        return response()->json([
+            'message' => "Machine unit '{$sku}' deleted successfully.",
         ]);
     }
 

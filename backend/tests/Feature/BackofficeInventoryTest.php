@@ -374,4 +374,76 @@ class BackofficeInventoryTest extends TestCase
 
         $this->assertSame('SN-VISIBLE-TO-STAFF', $units[0]['serial']);
     }
+
+    /* --------------------------------------------------------------- deletion */
+
+    public function test_a_manager_can_delete_a_product(): void
+    {
+        $product = $this->laptopListing();
+        ProductUnit::factory()->for($product)->create(['sku' => 'GG-DEL-1', 'status' => ProductUnit::STATUS_AVAILABLE]);
+
+        $this->actingAs($this->manager())
+            ->deleteJson("/api/inventory/{$product->slug}")
+            ->assertOk()
+            ->assertJsonPath('message', "Product '{$product->name}' deleted successfully.");
+
+        $this->assertSoftDeleted('products', ['id' => $product->id]);
+        $this->assertDatabaseMissing('product_units', ['sku' => 'GG-DEL-1']);
+    }
+
+    public function test_cannot_delete_a_product_with_active_reserved_units(): void
+    {
+        $product = $this->laptopListing();
+        ProductUnit::factory()->for($product)->create([
+            'sku' => 'GG-DEL-RES',
+            'status' => ProductUnit::STATUS_RESERVED,
+            'reserved_until' => now()->addHour(),
+        ]);
+
+        $this->actingAs($this->manager())
+            ->deleteJson("/api/inventory/{$product->slug}")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['product']);
+
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'deleted_at' => null]);
+    }
+
+    public function test_sales_without_inventory_manage_cannot_delete_product(): void
+    {
+        $product = $this->laptopListing();
+
+        $this->actingAs($this->sales())
+            ->deleteJson("/api/inventory/{$product->slug}")
+            ->assertStatus(403);
+
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'deleted_at' => null]);
+    }
+
+    public function test_a_manager_can_delete_an_available_unit(): void
+    {
+        $product = $this->laptopListing();
+        $unit = ProductUnit::factory()->for($product)->create(['sku' => 'GG-UNIT-DEL', 'status' => ProductUnit::STATUS_AVAILABLE]);
+
+        $this->actingAs($this->manager())
+            ->deleteJson("/api/inventory/units/{$unit->sku}")
+            ->assertOk()
+            ->assertJsonPath('message', "Machine unit '{$unit->sku}' deleted successfully.");
+
+        $this->assertDatabaseMissing('product_units', ['sku' => $unit->sku]);
+    }
+
+    public function test_cannot_delete_a_sold_unit(): void
+    {
+        $product = $this->laptopListing();
+        $order = Order::factory()->create();
+        $unit = ProductUnit::factory()->for($product)->create(['sku' => 'GG-UNIT-SOLD']);
+        $unit->markSold($order->id, $order->reference);
+
+        $this->actingAs($this->manager())
+            ->deleteJson("/api/inventory/units/{$unit->sku}")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['unit']);
+
+        $this->assertDatabaseHas('product_units', ['sku' => $unit->sku]);
+    }
 }

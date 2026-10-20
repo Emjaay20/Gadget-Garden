@@ -56,3 +56,32 @@ export async function PATCH(
     );
   }
 }
+
+/**
+ * DELETE /api/inventory/{slug} — Delete a product catalogue listing.
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ slug: string }> },
+) {
+  const { slug } = await params;
+
+  try {
+    const result = await api(`/inventory/${encodeURIComponent(slug)}`, {
+      method: "DELETE",
+    });
+
+    return Response.json(result);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return Response.json(
+        { message: error.message, errors: error.errors },
+        { status: error.status },
+      );
+    }
+    return Response.json(
+      { message: "Could not delete product. Please try again." },
+      { status: 500 },
+    );
+  }
+}

@@ -1,3 +1,4 @@
+import { DeleteUnitDialog } from "@/components/inventory/delete-unit-dialog";
 import { margin, naira, specSummary } from "@/lib/format";
 import type { ProductUnit, UnitStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,8 @@ export function UnitTable({ units }: { units: ProductUnit[] }) {
             {showCost && (
               <th className="py-2 pr-4 text-right font-medium">Cost / margin</th>
             )}
-            <th className="py-2 font-medium">Status</th>
+            <th className="py-2 pr-4 font-medium">Status</th>
+            <th className="py-2 text-right font-medium">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -101,8 +103,13 @@ export function UnitTable({ units }: { units: ProductUnit[] }) {
                     )}
                   </td>
                 )}
-                <td className={cn("py-3 text-xs font-medium", tone.className)}>
+                <td className={cn("py-3 pr-4 text-xs font-medium", tone.className)}>
                   {tone.label}
+                </td>
+                <td className="py-3 text-right">
+                  {unit.status !== "sold" && unit.status !== "reserved" && (
+                    <DeleteUnitDialog sku={unit.sku} serial={unit.serial} />
+                  )}
                 </td>
               </tr>
             );

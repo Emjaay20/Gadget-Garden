@@ -127,9 +127,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('permission:'.Permissions::INVENTORY_MANAGE)->group(function () {
         Route::post('/inventory', [InventoryController::class, 'store']);
         Route::patch('/inventory/{product:slug}', [InventoryController::class, 'update']);
+        Route::delete('/inventory/{product:slug}', [InventoryController::class, 'destroy']);
         Route::post('/inventory/{product:slug}/units', [InventoryController::class, 'storeUnits']);
 
         Route::patch('/inventory/units/{unit:sku}', [InventoryController::class, 'updateUnit']);
+        Route::delete('/inventory/units/{unit:sku}', [InventoryController::class, 'destroyUnit']);
         Route::post('/inventory/{product:slug}/stock-movements', [InventoryController::class, 'storeMovement']);
 
         // Photography & Media Management

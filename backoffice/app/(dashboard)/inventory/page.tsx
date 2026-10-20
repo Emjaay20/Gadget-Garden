@@ -5,6 +5,7 @@ import { AlertTriangle } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddProductDialog } from "@/components/inventory/add-product-dialog";
+import { DeleteProductDialog } from "@/components/inventory/delete-product-dialog";
 import { api } from "@/lib/server/api";
 import { naira, specSummary } from "@/lib/format";
 import type { Paginated, Product } from "@/lib/types";
@@ -94,7 +95,8 @@ async function ProductTable({
             <th className="py-2 pr-4 font-medium">Type</th>
             <th className="py-2 pr-4 text-right font-medium">Available</th>
             <th className="py-2 pr-4 text-right font-medium">Price</th>
-            <th className="py-2 font-medium">State</th>
+            <th className="py-2 pr-4 font-medium">State</th>
+            <th className="py-2 text-right font-medium">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -122,7 +124,7 @@ async function ProductTable({
               <td className="gg-numeric text-muted-foreground py-3 pr-4 text-right">
                 {product.from_price === null ? "—" : naira(product.from_price)}
               </td>
-              <td className="py-3">
+              <td className="py-3 pr-4">
                 {product.available_count === 0 ? (
                   <span className="text-destructive text-xs font-medium">
                     Out of stock
@@ -135,6 +137,13 @@ async function ProductTable({
                 ) : (
                   <span className="text-muted-foreground text-xs">In stock</span>
                 )}
+              </td>
+              <td className="py-3 text-right">
+                <DeleteProductDialog
+                  slug={product.slug}
+                  productName={product.name}
+                  triggerVariant="icon"
+                />
               </td>
             </tr>
           ))}

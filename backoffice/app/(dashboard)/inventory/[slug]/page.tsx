@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 
 import { AiEnrichmentModal } from "@/components/inventory/ai-enrichment-modal";
+import { DeleteProductDialog } from "@/components/inventory/delete-product-dialog";
 import { ImageGalleryManager } from "@/components/inventory/image-gallery-manager";
 import { IntakeForm } from "@/components/inventory/intake-form";
 import { ProductDetailsEditor } from "@/components/inventory/product-details-editor";
@@ -68,6 +69,12 @@ export default async function InventoryDetailPage({ params }: Props) {
             productName={product.name}
             brand={product.brand}
           />
+          <DeleteProductDialog
+            slug={product.slug}
+            productName={product.name}
+            triggerVariant="button"
+            redirectOnDelete="/inventory"
+          />
         </div>
       </div>
 
@@ -119,6 +126,26 @@ export default async function InventoryDetailPage({ params }: Props) {
           Upload showcase photos or link direct image URLs. The first image serves as the listing thumbnail on the storefront.
         </p>
         <ImageGalleryManager slug={product.slug} initialImages={product.images ?? []} />
+      </section>
+
+      <section className="mt-12 border-t border-destructive/20 bg-destructive/5 rounded-xl p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-destructive">
+              Danger Zone
+            </h2>
+            <p className="text-muted-foreground text-xs mt-1">
+              Permanently remove this product listing and all unsold inventory machines from the catalogue.
+            </p>
+          </div>
+
+          <DeleteProductDialog
+            slug={product.slug}
+            productName={product.name}
+            triggerVariant="button"
+            redirectOnDelete="/inventory"
+          />
+        </div>
       </section>
     </div>
   );
