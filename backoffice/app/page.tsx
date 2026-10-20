@@ -6,13 +6,19 @@ import { getToken } from "@/lib/server/session";
 /** The backoffice root redirects to /inventory if logged in, otherwise /login. */
 export default async function Home() {
   const token = await getToken();
+  let hasValidSession = false;
+
   if (token) {
     try {
       await api("/me");
-      redirect("/inventory");
+      hasValidSession = true;
     } catch {
-      // Invalid token
+      hasValidSession = false;
     }
+  }
+
+  if (hasValidSession) {
+    redirect("/inventory");
   }
 
   redirect("/login");

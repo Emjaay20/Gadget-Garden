@@ -15,13 +15,19 @@ export default async function LoginPage() {
   // If the token has expired, been revoked, or is stale, we swallow the error
   // and display the login form so the user can sign in without a redirect loop.
   const token = await getToken();
+  let hasValidSession = false;
+
   if (token) {
     try {
       await api("/me");
-      redirect("/inventory");
+      hasValidSession = true;
     } catch {
-      // Stale or invalid session — fall through to render the sign-in form.
+      hasValidSession = false;
     }
+  }
+
+  if (hasValidSession) {
+    redirect("/inventory");
   }
 
   return (
