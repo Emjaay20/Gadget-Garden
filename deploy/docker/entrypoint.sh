@@ -107,6 +107,23 @@ if (!\App\Models\User::where('email', \$email)->exists()) {
 }
 "
 
+echo "==> [Gadgets Garden] Ensuring default categories exist..."
+php artisan tinker --execute="
+\$rows = [
+    ['laptops', 'Laptops', 'Premium new and foreign-used laptops for work, school and gaming.', 1],
+    ['gaming', 'Gaming laptops', 'High-refresh machines with discrete graphics.', 2],
+    ['accessories', 'Accessories', 'Chargers, bags, mice and everything in between.', 3],
+    ['smartphones', 'Smartphones', 'Flagship and budget smartphones.', 4],
+    ['tablets', 'Tablets', 'iPads and Android tablets.', 5],
+];
+foreach (\$rows as [\$slug, \$name, \$description, \$sort]) {
+    \App\Models\Category::firstOrCreate(
+        ['slug' => \$slug],
+        ['name' => \$name, 'description' => \$description, 'sort_order' => \$sort]
+    );
+}
+"
+
 echo "==> [Gadgets Garden] Linking storage..."
 php artisan storage:link 2>/dev/null || true
 
