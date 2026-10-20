@@ -108,7 +108,7 @@ export function IntakeForm({ slug }: { slug: string }) {
       })),
     };
 
-    const response = await fetch(`/api/inventory/${slug}/units`, {
+    const response = await fetch(`/admin/api/inventory/${slug}/units`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

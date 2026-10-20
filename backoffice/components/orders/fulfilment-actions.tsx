@@ -37,7 +37,7 @@ export function FulfilmentActions({
   async function submit(status?: OrderStatus) {
     setBusy(status ?? "note");
 
-    const response = await fetch(`/api/orders/${reference}`, {
+    const response = await fetch(`/admin/api/orders/${reference}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, note: note.trim() || undefined }),

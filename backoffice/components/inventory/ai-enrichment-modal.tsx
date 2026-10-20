@@ -88,7 +88,7 @@ export function AiEnrichmentModal({ slug, productName, brand }: Props) {
   async function handleDiscover() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/inventory/${encodeURIComponent(slug)}/enrich`, {
+      const res = await fetch(`/admin/api/inventory/${encodeURIComponent(slug)}/enrich`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -130,7 +130,7 @@ export function AiEnrichmentModal({ slug, productName, brand }: Props) {
     try {
       const selected = imageCandidates.filter((img) => selectedUrls.has(img.url));
 
-      const res = await fetch(`/api/inventory/${encodeURIComponent(slug)}/enrich`, {
+      const res = await fetch(`/admin/api/inventory/${encodeURIComponent(slug)}/enrich`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -38,7 +38,7 @@ export function OfferActions({ offer }: { offer: OfferItem }) {
     setBusy(true);
 
     try {
-      const res = await fetch(`/api/offers/${offer.reference}/accept`, {
+      const res = await fetch(`/admin/api/offers/${offer.reference}/accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ staff_note: "Accepted by sales desk" }),
@@ -72,7 +72,7 @@ export function OfferActions({ offer }: { offer: OfferItem }) {
     setBusy(true);
 
     try {
-      const res = await fetch(`/api/offers/${offer.reference}/counter`, {
+      const res = await fetch(`/admin/api/offers/${offer.reference}/counter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -103,7 +103,7 @@ export function OfferActions({ offer }: { offer: OfferItem }) {
     setBusy(true);
 
     try {
-      const res = await fetch(`/api/offers/${offer.reference}/decline`, {
+      const res = await fetch(`/admin/api/offers/${offer.reference}/decline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ staff_note: declineNote.trim() || undefined }),

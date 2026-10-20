@@ -63,7 +63,7 @@ export function OfflinePaymentDialog({
     setSubmitting(true);
 
     try {
-      const response = await fetch(`/api/orders/${reference}/verify-offline-payment`, {
+      const response = await fetch(`/admin/api/orders/${reference}/verify-offline-payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

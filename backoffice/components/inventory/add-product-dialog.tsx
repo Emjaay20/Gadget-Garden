@@ -72,7 +72,7 @@ export function AddProductDialog() {
     if (!open || categories.length > 0) return;
 
     setFetchingCategories(true);
-    fetch("/api/inventory/categories")
+    fetch("/admin/api/inventory/categories")
       .then((res) => res.json())
       .then((json) => {
         if (json.data && Array.isArray(json.data)) {
@@ -151,7 +151,7 @@ export function AddProductDialog() {
         }
       }
 
-      const res = await fetch("/api/inventory", {
+      const res = await fetch("/admin/api/inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

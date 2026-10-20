@@ -47,7 +47,7 @@ export function ImageGalleryManager({ slug, initialImages = [] }: Props) {
     if (fileAlt) formData.append("alt", fileAlt);
 
     try {
-      const res = await fetch(`/api/inventory/${encodeURIComponent(slug)}/images`, {
+      const res = await fetch(`/admin/api/inventory/${encodeURIComponent(slug)}/images`, {
         method: "POST",
         body: formData,
       });
@@ -74,7 +74,7 @@ export function ImageGalleryManager({ slug, initialImages = [] }: Props) {
 
     setIsUploading(true);
     try {
-      const res = await fetch(`/api/inventory/${encodeURIComponent(slug)}/images`, {
+      const res = await fetch(`/admin/api/inventory/${encodeURIComponent(slug)}/images`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -104,7 +104,7 @@ export function ImageGalleryManager({ slug, initialImages = [] }: Props) {
 
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/inventory/images/${encodeURIComponent(id)}`, {
+      const res = await fetch(`/admin/api/inventory/images/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
 

@@ -77,7 +77,7 @@ export function ProductDetailsEditor({ product }: Props) {
         warranty_months: parseInt(warrantyMonths, 10) || 0,
       };
 
-      const res = await fetch(`/api/inventory/${encodeURIComponent(product.slug)}`, {
+      const res = await fetch(`/admin/api/inventory/${encodeURIComponent(product.slug)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

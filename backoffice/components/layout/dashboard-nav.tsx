@@ -37,7 +37,7 @@ export function DashboardNav({ user }: { user: StaffUser }) {
   const visible = LINKS.filter((link) => user.permissions.includes(link.requires));
 
   async function signOut() {
-    await fetch("/api/logout", { method: "POST" });
+    await fetch("/admin/api/logout", { method: "POST" });
     router.refresh();
     router.push("/login");
   }

@@ -78,7 +78,7 @@ export function StockMovementForm({
             note: note.trim() || undefined,
           };
 
-    const response = await fetch(`/api/inventory/${slug}/stock-movements`, {
+    const response = await fetch(`/admin/api/inventory/${slug}/stock-movements`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
