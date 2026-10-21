@@ -50,3 +50,40 @@ export async function proxyJson(
     headers: { "Content-Type": "application/json" },
   });
 }
+
+/**
+ * Forward a provider webhook without interpreting its body. Keeping the payload
+ * and headers intact lets a payment provider authenticate at the Laravel edge
+ * while the public app continues to expose only the storefront origin.
+ */
+export async function proxyWebhook(
+  path: string,
+  request: Request,
+): Promise<Response> {
+  let upstream: Response;
+
+  try {
+    upstream = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": request.headers.get("content-type") ?? "application/json",
+        Accept: "application/json",
+        ...(request.headers.get("authorization")
+          ? { Authorization: request.headers.get("authorization")! }
+          : {}),
+      },
+      body: await request.text(),
+      cache: "no-store",
+    });
+  } catch {
+    return Response.json(
+      { message: "We could not reach our systems. Please try again in a moment." },
+      { status: 503 },
+    );
+  }
+
+  return new Response(await upstream.text(), {
+    status: upstream.status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
