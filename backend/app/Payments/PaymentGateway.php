@@ -20,7 +20,7 @@ interface PaymentGateway
      * Ask the provider for a payment instruction — a virtual account, or a
      * redirect URL, depending on the provider.
      */
-    public function initialize(Order $order): PaymentInstruction;
+    public function initialize(Order $order, ?int $amount = null, ?string $reference = null): PaymentInstruction;
 
     /**
      * Ask the provider directly whether a payment landed. This is what the

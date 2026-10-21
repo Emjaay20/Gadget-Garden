@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Shop;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PlaceOrderRequest;
 use App\Http\Resources\OrderResource;
+use App\Models\Coupon;
 use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Shop\CartUnavailableException;
@@ -42,6 +43,8 @@ class OrderController extends Controller
             'items.*.product_unit_id' => ['nullable', 'integer'],
             'items.*.quantity' => ['nullable', 'integer', 'min:1', 'max:20'],
             'delivery_zone' => ['nullable', 'string', 'exists:delivery_zones,slug'],
+            'coupon_code' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email'],
         ]);
 
         $lines = $this->cart->resolve($validated['items']);
@@ -58,12 +61,46 @@ class OrderController extends Controller
 
         $deliveryFee = $this->cart->deliveryFee($zone, $subtotal);
 
+        $discountAmount = 0;
+        $couponData = null;
+        if (! empty($validated['coupon_code'])) {
+            $coupon = Coupon::where('code', strtoupper(trim($validated['coupon_code'])))->first();
+            if ($coupon) {
+                $check = $coupon->validateFor($subtotal, $validated['email'] ?? null);
+                if ($check['valid']) {
+                    $discountAmount = $check['discount'];
+                    $couponData = [
+                        'code' => $coupon->code,
+                        'description' => $coupon->description,
+                        'discount_amount' => $discountAmount,
+                        'valid' => true,
+                    ];
+                } else {
+                    $couponData = [
+                        'code' => $coupon->code,
+                        'error' => $check['error'],
+                        'valid' => false,
+                    ];
+                }
+            } else {
+                $couponData = [
+                    'code' => strtoupper(trim($validated['coupon_code'])),
+                    'error' => 'Invalid promo code.',
+                    'valid' => false,
+                ];
+            }
+        }
+
+        $total = max(0, $subtotal + $deliveryFee - $discountAmount);
+
         return response()->json([
             'data' => [
                 'lines' => $lines->map->toArray()->all(),
                 'subtotal' => $subtotal,
                 'delivery_fee' => $deliveryFee,
-                'total' => $subtotal + $deliveryFee,
+                'discount_amount' => $discountAmount,
+                'coupon' => $couponData,
+                'total' => $total,
                 'currency' => 'NGN',
                 'has_problems' => $lines->contains(fn ($line) => ! $line->isAvailable()),
             ],
@@ -88,6 +125,8 @@ class OrderController extends Controller
                 address: $validated['address'],
                 zone: $zone,
                 offerReference: $validated['offer_reference'] ?? null,
+                couponCode: $validated['coupon_code'] ?? null,
+                paymentMode: $validated['payment_mode'] ?? Order::PAYMENT_MODE_FULL,
             );
         } catch (CartUnavailableException $e) {
             // 422, not 409: the storefront's error handling already parses this

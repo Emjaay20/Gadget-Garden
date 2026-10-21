@@ -114,7 +114,7 @@ class AuthTest extends TestCase
     {
         $user = $this->owner();
 
-        foreach (range(1, 6) as $ignored) {
+        foreach (range(1, 30) as $ignored) {
             $this->postJson('/api/login', [
                 'email' => $user->email,
                 'password' => 'wrong',

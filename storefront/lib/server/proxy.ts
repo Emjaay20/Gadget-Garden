@@ -19,7 +19,7 @@ const API_URL = process.env.API_URL ?? "http://localhost:8000/api";
 
 export async function proxyJson(
   path: string,
-  init: { method?: string; body?: unknown } = {},
+  init: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
 ): Promise<Response> {
   let upstream: Response;
 
@@ -29,6 +29,7 @@ export async function proxyJson(
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        ...(init.headers ?? {}),
       },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       cache: "no-store",

@@ -30,19 +30,21 @@ class MockGateway implements PaymentGateway
         return 'mock';
     }
 
-    public function initialize(Order $order): PaymentInstruction
+    public function initialize(Order $order, ?int $amount = null, ?string $reference = null): PaymentInstruction
     {
+        $amount ??= $order->total;
+        $reference ??= $order->reference;
         // Deterministic from the reference, so re-initialising an order shows the
         // same account rather than confusing the customer with a new one.
-        $digits = substr(preg_replace('/\D/', '', crc32($order->reference).'0000000000'), 0, 10);
+        $digits = substr(preg_replace('/\D/', '', crc32($reference).'0000000000'), 0, 10);
 
         return new PaymentInstruction(
-            reference: $order->reference,
+            reference: $reference,
             accountNumber: $digits,
             accountName: 'GADGETS GARDEN / '.strtoupper($order->contact_name),
             bankName: 'Test Bank (mock)',
             expiresAt: now()->addDay(),
-            raw: ['mock' => true, 'order' => $order->reference],
+            raw: ['mock' => true, 'order' => $order->reference, 'amount' => $amount],
         );
     }
 

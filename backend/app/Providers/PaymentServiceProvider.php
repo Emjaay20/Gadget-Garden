@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Payments\Gateways\MockGateway;
+use App\Payments\Gateways\DisabledGateway;
 use App\Payments\Gateways\XendifyGateway;
 use App\Payments\PaymentGateway;
 use Illuminate\Support\ServiceProvider;
@@ -19,6 +20,7 @@ class PaymentServiceProvider extends ServiceProvider
             return match (config('shop.provider')) {
                 'xendify' => new XendifyGateway,
                 'mock' => new MockGateway,
+                'disabled' => new DisabledGateway,
                 default => throw new RuntimeException(
                     'Unknown SHOP_PAYMENT_PROVIDER ['.config('shop.provider').'].'
                 ),

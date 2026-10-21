@@ -41,6 +41,8 @@ class PlaceOrderRequest extends FormRequest
 
             'delivery_zone' => ['required', 'string', 'exists:delivery_zones,slug'],
             'offer_reference' => ['nullable', 'string', 'max:20', 'exists:offers,reference'],
+            'coupon_code' => ['nullable', 'string', 'max:50'],
+            'payment_mode' => ['nullable', 'in:full,layaway'],
             'address.line1' => ['required', 'string', 'max:255'],
             'address.city' => ['required', 'string', 'max:120'],
             'address.state' => ['required', 'string', 'max:120'],

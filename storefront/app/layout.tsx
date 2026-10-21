@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { PromoBanner } from "@/components/layout/promo-banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { MotionProvider } from "@/components/motion/motion-provider";
@@ -54,6 +55,7 @@ export default function RootLayout({
         */}
         <CartProvider>
           <MotionProvider>
+            <PromoBanner />
             <SiteHeader />
             <main className="flex-1">{children}</main>
             <SiteFooter />

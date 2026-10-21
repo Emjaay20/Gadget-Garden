@@ -136,8 +136,15 @@ export type Order = {
   status_label: string;
   subtotal: number;
   delivery_fee: number;
+  coupon_code?: string | null;
+  discount_amount?: number;
   total: number;
   currency: string;
+  payment_mode?: "full" | "layaway";
+  layaway_paid_amount?: number;
+  layaway_balance?: number | null;
+  layaway_minimum_payment?: number | null;
+  layaway_due_at?: string | null;
   contact_name: string;
   contact_email: string;
   contact_phone: string;
@@ -153,6 +160,51 @@ export type Order = {
     zone: string | null;
   };
   items?: OrderItem[];
+  warranty?: WarrantyInfo;
+};
+
+export type WishlistItem = {
+  id: string;
+  product: Product;
+  unit_id: string | null;
+  unit_sku: string | null;
+  added_at: string | null;
+};
+
+export type Wishlist = {
+  title: string;
+  share_slug: string;
+  is_public?: boolean;
+  share_expires_at?: string | null;
+  owner_name?: string;
+  items: WishlistItem[];
+};
+
+export type Customer = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+};
+
+export type WarrantyInfo = {
+  is_active: boolean;
+  duration: string;
+  starts_at: string | null;
+  expires_at: string | null;
+  terms: string;
+  support_whatsapp: string;
+};
+
+export type CouponValidationResult = {
+  code: string;
+  description: string | null;
+  type?: string;
+  value?: number;
+  discount_amount: number;
+  subtotal: number;
+  delivery_fee: number;
+  total: number;
 };
 
 export type Paginated<T> = {

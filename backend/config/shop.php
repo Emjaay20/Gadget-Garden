@@ -32,6 +32,19 @@ return [
      */
     'unpaid_order_ttl_hours' => (int) env('SHOP_UNPAID_ORDER_TTL_HOURS', 24),
 
+    /*
+     | Layaway is deliberately a reservation plan, not credit. It is available
+     | only for one serialized device, locks the agreed price, and expires after
+     | 30 days unless the balance is complete. The first payment is at least 20%
+     | of the checkout total; later payments may be any amount of ₦10,000+.
+     */
+    'layaway' => [
+        'enabled' => env('SHOP_LAYAWAY_ENABLED', true),
+        'term_days' => (int) env('SHOP_LAYAWAY_TERM_DAYS', 30),
+        'deposit_percent' => (int) env('SHOP_LAYAWAY_DEPOSIT_PERCENT', 20),
+        'minimum_payment' => (int) env('SHOP_LAYAWAY_MINIMUM_PAYMENT', 10_000),
+    ],
+
     'xendify' => [
         'base_url' => env('SHOP_XENDIFY_BASE_URL', 'https://api.xendify.com/api/v1'),
 

@@ -64,18 +64,20 @@ class XendifyGateway implements PaymentGateway
         return 'xendify';
     }
 
-    public function initialize(Order $order): PaymentInstruction
+    public function initialize(Order $order, ?int $amount = null, ?string $reference = null): PaymentInstruction
     {
+        $amount ??= $order->total;
+        $reference ??= $order->reference;
         $response = $this->client()->post('/create_checkout_account', [
             'name' => $order->contact_name,
             'email' => $order->contact_email,
             // Their example sends amount as a string, in naira.
-            'amount' => (string) $order->total,
+            'amount' => (string) $amount,
             'currency' => $order->currency,
-            'reference' => $order->reference,
+            'reference' => $reference,
             'phone' => $order->contact_phone,
             'title' => 'Gadgets Garden',
-            'description' => "Order {$order->reference}",
+            'description' => $order->isLayaway() ? "Layaway payment for {$order->reference}" : "Order {$order->reference}",
             'provider' => config('shop.xendify.provider'),
         ]);
 
@@ -114,7 +116,7 @@ class XendifyGateway implements PaymentGateway
         $expires = $this->pick($data, ['accountExpiry', 'expires_at', 'expiry', 'expiryDate', 'expires']);
 
         return new PaymentInstruction(
-            reference: (string) ($this->pick($data, ['reference', 'trx', 'transaction_reference']) ?? $order->reference),
+            reference: (string) ($this->pick($data, ['reference', 'trx', 'transaction_reference']) ?? $reference),
             accountNumber: (string) $accountNumber,
             accountName: $this->pick($data, ['account_name', 'accountName']) ?? $order->contact_name,
             bankName: $this->pick($data, ['bank_name', 'bankName', 'bank']),

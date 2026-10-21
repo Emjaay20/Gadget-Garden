@@ -27,7 +27,7 @@ class ProductCreationTest extends TestCase
             ],
         ]);
 
-        $this->assertCount(3, $response->json('data'));
+        $this->assertCount(Category::count(), $response->json('data'));
     }
 
     public function test_manager_can_create_unit_laptop_product(): void

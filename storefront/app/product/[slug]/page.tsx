@@ -7,6 +7,7 @@ import { ConditionBadge } from "@/components/brand/condition-badge";
 import { Reveal } from "@/components/motion/reveal";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { UnitPicker } from "@/components/shop/unit-picker";
+import { SaveToWishlist } from "@/components/shop/save-to-wishlist";
 import { getProduct } from "@/lib/api";
 import { BUSINESS } from "@/lib/business";
 import { naira } from "@/lib/format";
@@ -111,6 +112,7 @@ export default async function ProductPage({ params }: Props) {
 
           <div className="mt-8">
             <UnitPicker product={product} />
+            <SaveToWishlist productId={product.id} />
           </div>
 
           <ul className="border-border mt-8 space-y-3 border-t pt-6">
@@ -222,4 +224,3 @@ function Breadcrumbs({ product }: { product: Awaited<ReturnType<typeof getProduc
     </nav>
   );
 }
-

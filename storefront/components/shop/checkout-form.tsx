@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, Loader2, Lock, Tag } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Loader2, Lock, Tag, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,14 +17,16 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/lib/cart-store";
+import { getCachedCustomer, fetchCustomerProfile } from "@/lib/customer-auth";
 import { naira } from "@/lib/format";
 import {
   placeOrder,
   resolveCart,
   ShopError,
+  validateCoupon,
   type ResolvedCart,
 } from "@/lib/shop-client";
-import type { DeliveryZone } from "@/lib/types";
+import type { Customer, DeliveryZone } from "@/lib/types";
 
 /**
  * Checkout.
@@ -41,37 +43,60 @@ export function CheckoutForm({ zones }: { zones: DeliveryZone[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const offerReference = searchParams.get("offer") ?? "";
+  const initialCoupon = searchParams.get("coupon") ?? "";
   const { entries, isReady, clear } = useCart();
 
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [zone, setZone] = useState(zones[0]?.slug ?? "");
   const [cart, setCart] = useState<ResolvedCart | null>(null);
   const [pricedFor, setPricedFor] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"full" | "layaway">("full");
 
-  // Identifies the exact cart+zone combination the current totals belong to, so
-  // "are these totals current?" is derivable rather than tracked in a flag.
-  const priceKey = `${zone}|${entries.map((e) => `${e.product_unit_id ?? e.product_id}:${e.quantity}`).join(",")}`;
+  // Coupon state
+  const [couponCodeInput, setCouponCodeInput] = useState(initialCoupon);
+  const [appliedCoupon, setAppliedCoupon] = useState<string>(initialCoupon);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+
+  // Load customer if logged in
+  useEffect(() => {
+    const cached = getCachedCustomer();
+    if (cached) {
+      setCustomer(cached);
+    }
+    fetchCustomerProfile().then((data) => {
+      if (data?.customer) {
+        setCustomer(data.customer);
+      }
+    });
+  }, []);
+
+  // Identifies the exact cart+zone+coupon combination the current totals belong to
+  const priceKey = `${zone}|${appliedCoupon}|${entries.map((e) => `${e.product_unit_id ?? e.product_id}:${e.quantity}`).join(",")}`;
 
   /*
-   * Re-price whenever the cart or the chosen zone changes.
-   *
-   * All setState happens in async callbacks — never synchronously in the effect
-   * body, which would cascade renders (and which React 19's linter refuses).
-   * "Still pricing" is derived from `pricedFor !== priceKey` below.
+   * Re-price whenever the cart, chosen zone, or coupon changes.
    */
   useEffect(() => {
     if (!isReady || entries.length === 0) return;
 
     let cancelled = false;
 
-    resolveCart(entries, zone)
+    resolveCart(entries, zone, appliedCoupon || undefined, customer?.email)
       .then((resolved) => {
         if (cancelled) return;
 
         setCart(resolved);
         setPricedFor(priceKey);
+        if (appliedCoupon && resolved.coupon && !resolved.coupon.valid) {
+          setCouponError(resolved.coupon.error || "Coupon could not be applied.");
+          setAppliedCoupon("");
+        } else {
+          setCouponError(null);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -82,19 +107,42 @@ export function CheckoutForm({ zones }: { zones: DeliveryZone[] }) {
     return () => {
       cancelled = true;
     };
-  }, [entries, isReady, zone, priceKey]);
+  }, [entries, isReady, zone, appliedCoupon, priceKey, customer?.email]);
 
-  // The displayed totals are only trustworthy when they were computed for the
-  // cart and zone currently selected.
   const isPricing = pricedFor !== priceKey;
 
-  // An empty cart has nothing to check out. Send them back rather than
-  // rendering a form that cannot submit.
   useEffect(() => {
     if (isReady && entries.length === 0 && !isSubmitting) {
       router.replace("/cart");
     }
   }, [isReady, entries.length, isSubmitting, router]);
+
+  async function handleApplyCoupon() {
+    if (!couponCodeInput.trim()) return;
+    setIsApplyingCoupon(true);
+    setCouponError(null);
+
+    try {
+      const res = await validateCoupon(
+        couponCodeInput.trim(),
+        entries,
+        zone,
+        customer?.email,
+      );
+      setAppliedCoupon(res.code);
+      setCouponError(null);
+    } catch (err: any) {
+      setCouponError(err.message || "Invalid coupon code.");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon("");
+    setCouponCodeInput("");
+    setCouponError(null);
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -122,14 +170,10 @@ export function CheckoutForm({ zones }: { zones: DeliveryZone[] }) {
           note: String(form.get("note") ?? "") || undefined,
         },
         offer_reference: offerReference || undefined,
+        coupon_code: appliedCoupon || undefined,
+        payment_mode: paymentMode,
       });
 
-      /*
-       | The cart is cleared only AFTER the order exists. Clearing optimistically
-       | would lose the customer's basket if checkout failed — and on serialized
-       | stock they could not simply re-add it, because the reservation attempt
-       | that failed may have been the last machine.
-       */
       clear();
       router.push(`/order/${order.reference}`);
     } catch (error) {
@@ -139,8 +183,6 @@ export function CheckoutForm({ zones }: { zones: DeliveryZone[] }) {
         setErrors(error.errors);
         setFormError(error.message);
 
-        // A 422 carrying lines means something sold mid-checkout. Send them
-        // back to the cart, which shows exactly which line failed.
         if (error.lines) {
           router.push("/cart");
         }
@@ -157,20 +199,47 @@ export function CheckoutForm({ zones }: { zones: DeliveryZone[] }) {
   return (
     <form onSubmit={onSubmit} className="mt-8 grid gap-10 lg:grid-cols-[1fr_340px]">
       <div className="space-y-8">
+        {customer ? (
+          <div className="border-border/60 bg-muted/30 flex items-center justify-between rounded-xl border p-4 text-sm">
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="text-emerald-500 size-4" />
+              Signed in as <strong>{customer.name}</strong> ({customer.email})
+            </span>
+            <Link href="/account" className="text-xs text-muted-foreground underline underline-offset-4">
+              My account
+            </Link>
+          </div>
+        ) : (
+          <div className="border-border flex items-center justify-between rounded-xl border border-dashed p-4 text-xs text-muted-foreground">
+            <span>Already have an account? Sign in for instant autofill.</span>
+            <Link href="/account/login" className="font-semibold text-foreground underline underline-offset-4">
+              Sign in
+            </Link>
+          </div>
+        )}
+
         <Fieldset title="Your details">
-          <Field label="Full name" name="name" errors={errors["contact.name"]} required />
+          <Field
+            label="Full name"
+            name="name"
+            defaultValue={customer?.name ?? ""}
+            errors={errors["contact.name"]}
+            required
+          />
           <Field
             label="Email"
             name="email"
             type="email"
+            defaultValue={customer?.email ?? ""}
             errors={errors["contact.email"]}
-            hint="Your receipt and payment details go here."
+            hint="Your receipt and order tracking go here."
             required
           />
           <Field
             label="Phone"
             name="phone"
             type="tel"
+            defaultValue={customer?.phone ?? ""}
             placeholder="0805 694 7271"
             errors={errors["contact.phone"]}
             required
@@ -199,17 +268,56 @@ export function CheckoutForm({ zones }: { zones: DeliveryZone[] }) {
             ) : null}
           </div>
 
-          <Field label="Address" name="line1" errors={errors["address.line1"]} required />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="City" name="city" errors={errors["address.city"]} required />
-            <Field label="State" name="state" errors={errors["address.state"]} required />
-          </div>
           <Field
-            label="Nearest landmark"
-            name="landmark"
-            hint="Optional, but it genuinely helps the rider find you."
+            label="Street address"
+            name="line1"
+            placeholder="12 Oshitelu Street"
+            errors={errors["address.line1"]}
+            required
           />
-          <Field label="Delivery note" name="note" hint="Optional." />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="City"
+              name="city"
+              placeholder="Ikeja"
+              errors={errors["address.city"]}
+              required
+            />
+            <Field
+              label="State"
+              name="state"
+              placeholder="Lagos"
+              errors={errors["address.state"]}
+              required
+            />
+          </div>
+
+          <Field
+            label="Closest landmark"
+            name="landmark"
+            placeholder="Behind Computer Village Police Post"
+            hint="Helps the courier find you faster."
+            errors={errors["address.landmark"]}
+          />
+
+          <Field
+            label="Delivery instructions"
+            name="note"
+            placeholder="Leave at reception, call on arrival, etc."
+            errors={errors["address.note"]}
+          />
+        </Fieldset>
+
+        <Fieldset title="How would you like to pay?">
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4">
+            <input type="radio" name="payment-mode" checked={paymentMode === "full"} onChange={() => setPaymentMode("full")} className="mt-1" />
+            <span><span className="font-medium">Pay in full</span><span className="mt-1 block text-sm text-muted-foreground">Receive your private bank-transfer details for the complete amount.</span></span>
+          </label>
+          <label className={`flex items-start gap-3 rounded-xl border p-4 ${entries.length === 1 && entries[0]?.product_unit_id ? "cursor-pointer border-border" : "cursor-not-allowed border-border/60 opacity-60"}`}>
+            <input type="radio" name="payment-mode" disabled={!(entries.length === 1 && entries[0]?.product_unit_id)} checked={paymentMode === "layaway"} onChange={() => setPaymentMode("layaway")} className="mt-1" />
+            <span><span className="flex items-center gap-1.5 font-medium"><Clock3 className="size-4" />Reserve & pay gradually</span><span className="mt-1 block text-sm text-muted-foreground">Reserve one laptop for 30 days. Pay at least 20% today, then make secure payments whenever you are ready. We dispatch only after the full balance clears.</span>{!(entries.length === 1 && entries[0]?.product_unit_id) && <span className="mt-2 block text-xs text-muted-foreground">Available for one serialized laptop at a time.</span>}</span>
+          </label>
         </Fieldset>
       </div>
 
@@ -220,20 +328,21 @@ export function CheckoutForm({ zones }: { zones: DeliveryZone[] }) {
           </h2>
 
           {isPricing || !cart ? (
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 space-y-3">
               <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
             </div>
           ) : (
             <>
-              <ul className="mt-4 space-y-2 text-sm">
+              <ul className="border-border mt-4 divide-y text-xs">
                 {cart.lines.map((line) => (
-                  <li key={line.key} className="flex justify-between gap-4">
+                  <li key={line.key} className="flex justify-between gap-4 py-2">
                     <span className="min-w-0 truncate">
                       {line.name}
                       {line.quantity > 1 && ` × ${line.quantity}`}
                     </span>
-                    <span className="gg-numeric shrink-0">
+                    <span className="gg-numeric shrink-0 font-medium">
                       {naira(line.line_total)}
                     </span>
                   </li>
@@ -251,7 +360,60 @@ export function CheckoutForm({ zones }: { zones: DeliveryZone[] }) {
                     {cart.delivery_fee === 0 ? "Free" : naira(cart.delivery_fee)}
                   </dd>
                 </div>
+                {cart.discount_amount && cart.discount_amount > 0 ? (
+                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                    <dt className="flex items-center gap-1.5">
+                      <Tag className="size-3.5" />
+                      Discount ({appliedCoupon})
+                    </dt>
+                    <dd className="gg-numeric">−{naira(cart.discount_amount)}</dd>
+                  </div>
+                ) : null}
               </dl>
+
+              {/* Promo Code Input Box */}
+              <div className="border-border mt-4 border-t pt-4">
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Tag className="size-3.5" />
+                      Code <strong>{appliedCoupon}</strong> applied
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="text-muted-foreground hover:text-foreground ml-2"
+                      title="Remove coupon"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Promo code (e.g. WELCOME5K)"
+                        value={couponCodeInput}
+                        onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                        className="h-8 text-xs font-mono"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleApplyCoupon}
+                        disabled={isApplyingCoupon || !couponCodeInput.trim()}
+                        className="h-8 text-xs shrink-0"
+                      >
+                        {isApplyingCoupon ? "Checking…" : "Apply"}
+                      </Button>
+                    </div>
+                    {couponError && (
+                      <p className="text-[11px] text-destructive">{couponError}</p>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {offerReference ? (
                 <div className="mt-3 flex items-center justify-between rounded-md bg-emerald-500/10 px-2.5 py-1.5 text-xs text-emerald-800 dark:text-emerald-300">
@@ -284,7 +446,7 @@ export function CheckoutForm({ zones }: { zones: DeliveryZone[] }) {
           <Button
             type="submit"
             size="lg"
-            className="mt-5 w-full"
+            className="mt-5 w-full font-semibold"
             disabled={isSubmitting || isPricing || !cart || cart.has_problems}
           >
             {isSubmitting ? (
@@ -301,8 +463,7 @@ export function CheckoutForm({ zones }: { zones: DeliveryZone[] }) {
           </Button>
 
           <p className="text-muted-foreground mt-3 text-xs text-pretty">
-            You will get bank transfer details on the next screen. Your items are
-            held for you until payment clears.
+            You will get bank transfer details on the next screen. {paymentMode === "layaway" ? "Your laptop is held for 30 days while you complete the balance." : "Your items are held for you until payment clears."}
           </p>
 
           <p className="text-muted-foreground mt-2 text-xs">
@@ -341,6 +502,7 @@ function Field({
   placeholder,
   errors,
   required,
+  defaultValue,
 }: {
   label: string;
   name: string;
@@ -349,6 +511,7 @@ function Field({
   placeholder?: string;
   errors?: string[];
   required?: boolean;
+  defaultValue?: string;
 }) {
   const id = `field-${name}`;
   const describedBy = [hint && `${id}-hint`, errors?.length && `${id}-error`]
@@ -367,6 +530,7 @@ function Field({
         id={id}
         name={name}
         type={type}
+        defaultValue={defaultValue}
         placeholder={placeholder}
         required={required}
         aria-invalid={errors?.length ? true : undefined}

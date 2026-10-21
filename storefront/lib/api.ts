@@ -8,6 +8,7 @@ import type {
   Order,
   Paginated,
   Product,
+  Wishlist,
 } from "@/lib/types";
 
 /**
@@ -161,6 +162,16 @@ export async function getDeliveryZones(): Promise<DeliveryZone[]> {
   const { data } = await request<DeliveryZone[]>("/shop/delivery-zones");
 
   return data;
+}
+
+export async function getSharedWishlist(slug: string): Promise<Wishlist | null> {
+  try {
+    const { data } = await request<Wishlist>(`/shop/wishlists/${encodeURIComponent(slug)}`);
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
 }
 
 /**

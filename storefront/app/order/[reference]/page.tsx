@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, Clock, Package } from "lucide-react";
+import { CheckCircle2, Clock, MessageCircle, Package, ShieldCheck, Tag } from "lucide-react";
 
 import { OrderStatusTimeline } from "@/components/shop/order-status-timeline";
 import { PayPanel } from "@/components/shop/pay-panel";
@@ -76,6 +76,11 @@ export default async function OrderPage({ params }: Props) {
           reference={order.reference}
           total={order.total}
           initialStatus={order.status}
+          paymentMode={order.payment_mode}
+          layawayPaidAmount={order.layaway_paid_amount}
+          layawayBalance={order.layaway_balance}
+          layawayMinimumPayment={order.layaway_minimum_payment}
+          layawayDueAt={order.layaway_due_at}
         />
       </div>
 
@@ -127,6 +132,15 @@ export default async function OrderPage({ params }: Props) {
               {order.delivery_fee === 0 ? "Free" : naira(order.delivery_fee)}
             </dd>
           </div>
+          {order.discount_amount && order.discount_amount > 0 ? (
+            <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+              <dt className="flex items-center gap-1.5">
+                <Tag className="size-3.5" />
+                Discount ({order.coupon_code})
+              </dt>
+              <dd className="gg-numeric">−{naira(order.discount_amount)}</dd>
+            </div>
+          ) : null}
         </dl>
 
         <div className="border-border mt-4 flex justify-between border-t pt-4">
@@ -145,9 +159,39 @@ export default async function OrderPage({ params }: Props) {
         )}
       </div>
 
+      {/* Warranty & Post-Purchase Security */}
+      <div className="border-border mt-6 rounded-xl border bg-muted/20 p-5">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="text-emerald-600 dark:text-emerald-400 size-5 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-sm">90-Day Direct Hardware Warranty</h3>
+              <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase">
+                Active
+              </span>
+            </div>
+            <p className="text-muted-foreground mt-1 text-xs text-pretty">
+              Every unit undergoes hardware testing before dispatch from Computer Village, Ikeja. Create a free customer account to save your digital warranty certificate and track future purchases.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="secondary" className="text-xs">
+                <Link href="/account">Save order to customer account</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button asChild variant="outline">
-          <a href={BUSINESS.whatsappUrl}>Message us about this order</a>
+          <a
+            href={`https://wa.me/2348000000000?text=Hello%20Gadgets%20Garden,%20I%20have%20an%20inquiry%20regarding%20order%20${order.reference}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <MessageCircle className="size-4 mr-1.5" />
+            WhatsApp support ({order.reference})
+          </a>
         </Button>
         <Button asChild variant="ghost">
           <Link href="/shop">Keep browsing</Link>

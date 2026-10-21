@@ -13,11 +13,15 @@ use Illuminate\Support\Str;
 
 #[Fillable([
     'reference', 'customer_id', 'address_id', 'subtotal', 'delivery_fee',
-    'total', 'currency', 'contact_name', 'contact_email', 'contact_phone',
-    'placed_at', 'reserved_until',
+    'total', 'currency', 'coupon_code', 'discount_amount', 'contact_name',
+    'contact_email', 'contact_phone', 'placed_at', 'reserved_until', 'payment_mode',
+    'layaway_due_at',
 ])]
 class Order extends Model
 {
+    public const PAYMENT_MODE_FULL = 'full';
+
+    public const PAYMENT_MODE_LAYAWAY = 'layaway';
     use HasFactory, SoftDeletes;
 
     public const PENDING_PAYMENT = 'pending_payment';
@@ -50,6 +54,10 @@ class Order extends Model
     protected $attributes = [
         'status' => self::PENDING_PAYMENT,
         'currency' => 'NGN',
+        'discount_amount' => 0,
+        'coupon_code' => null,
+        'payment_mode' => self::PAYMENT_MODE_FULL,
+        'layaway_paid_amount' => 0,
     ];
 
     /**
@@ -64,6 +72,13 @@ class Order extends Model
             'placed_at' => 'datetime',
             'paid_at' => 'datetime',
             'reserved_until' => 'datetime',
+            'subtotal' => 'integer',
+            'delivery_fee' => 'integer',
+            'discount_amount' => 'integer',
+            'total' => 'integer',
+            'layaway_paid_amount' => 'integer',
+            'layaway_minimum_payment' => 'integer',
+            'layaway_due_at' => 'datetime',
         ];
     }
 
@@ -138,6 +153,16 @@ class Order extends Model
             self::FAILED,
             self::CANCELLED,
         ], true);
+    }
+
+    public function isLayaway(): bool
+    {
+        return $this->payment_mode === self::PAYMENT_MODE_LAYAWAY;
+    }
+
+    public function layawayBalance(): int
+    {
+        return max(0, (int) $this->total - (int) $this->layaway_paid_amount);
     }
 
     /** Awaiting payment: the only state from which a customer can still pay. */

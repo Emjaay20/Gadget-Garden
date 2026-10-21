@@ -3,21 +3,37 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
- * A buyer. Not a login — see the migration.
+ * A customer / buyer.
+ *
+ * Supports both guest checkouts (password = null) and authenticated shopper
+ * accounts (password set) with Sanctum tokens.
  */
-#[Fillable(['name', 'email', 'phone', 'source', 'note'])]
-class Customer extends Model
+#[Fillable(['name', 'email', 'phone', 'source', 'note', 'password'])]
+#[Hidden(['password', 'remember_token'])]
+class Customer extends Authenticatable
 {
-    use HasFactory;
+    use HasApiTokens, HasFactory, Notifiable;
 
     public const SOURCE_SHOP = 'shop';
 
     public const SOURCE_WALK_IN = 'walk_in';
+
+    protected function casts(): array
+    {
+        return [
+            'password' => 'hashed',
+            'email_verified_at' => 'datetime',
+        ];
+    }
 
     public function orders(): HasMany
     {
@@ -27,6 +43,11 @@ class Customer extends Model
     public function addresses(): HasMany
     {
         return $this->hasMany(Address::class);
+    }
+
+    public function wishlist(): HasOne
+    {
+        return $this->hasOne(Wishlist::class);
     }
 
     /**

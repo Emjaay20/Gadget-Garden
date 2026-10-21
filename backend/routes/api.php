@@ -16,6 +16,7 @@ use App\Http\Controllers\Shop\OfferController as ShopOfferController;
 use App\Http\Controllers\Shop\OrderController;
 use App\Http\Controllers\Shop\PaymentController;
 use App\Http\Controllers\Shop\ProductController;
+use App\Http\Controllers\Shop\WishlistController;
 use App\Http\Controllers\StaffController;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\Route;
@@ -64,6 +65,7 @@ Route::middleware('throttle:60,1')->prefix('shop')->group(function () {
     Route::post('/auth/login', [CustomerAuthController::class, 'login']);
 
     Route::get('/orders/{reference}', [OrderController::class, 'show']);
+    Route::get('/wishlists/{slug}', [WishlistController::class, 'shared']);
 
     // AI Store Assistant (Laptop Matchmaker)
     Route::post('/ai/recommend', [AiAssistantController::class, 'recommend']);
@@ -78,6 +80,10 @@ Route::middleware(['auth:sanctum'])->prefix('shop')->group(function () {
     Route::get('/customer/orders', [CustomerAuthController::class, 'orders']);
     Route::get('/customer/orders/{reference}', [CustomerAuthController::class, 'order']);
     Route::post('/customer/addresses', [CustomerAuthController::class, 'saveAddress']);
+    Route::get('/customer/wishlist', [WishlistController::class, 'show']);
+    Route::patch('/customer/wishlist', [WishlistController::class, 'update']);
+    Route::post('/customer/wishlist/items', [WishlistController::class, 'storeItem']);
+    Route::delete('/customer/wishlist/items/{item}', [WishlistController::class, 'destroyItem']);
 });
 
 /*

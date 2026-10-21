@@ -27,8 +27,15 @@ class OrderResource extends JsonResource
 
             'subtotal' => (int) $this->subtotal,
             'delivery_fee' => (int) $this->delivery_fee,
+            'coupon_code' => $this->coupon_code,
+            'discount_amount' => (int) ($this->discount_amount ?? 0),
             'total' => (int) $this->total,
             'currency' => $this->currency,
+            'payment_mode' => $this->payment_mode,
+            'layaway_paid_amount' => (int) $this->layaway_paid_amount,
+            'layaway_balance' => $this->isLayaway() ? $this->layawayBalance() : null,
+            'layaway_minimum_payment' => $this->layaway_minimum_payment === null ? null : (int) $this->layaway_minimum_payment,
+            'layaway_due_at' => $this->layaway_due_at?->toIso8601String(),
 
             'contact_name' => $this->contact_name,
             'contact_email' => $this->contact_email,

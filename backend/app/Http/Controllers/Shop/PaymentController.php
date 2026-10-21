@@ -41,6 +41,8 @@ class PaymentController extends Controller
     {
         $order = $this->orderFrom($request);
 
+        $request->validate(['amount' => ['nullable', 'integer', 'min:1']]);
+
         if ($order->status !== Order::PENDING_PAYMENT) {
             return response()->json([
                 'data' => [
@@ -50,8 +52,11 @@ class PaymentController extends Controller
             ]);
         }
 
+        $requestedAmount = $this->requestedAmount($order, $request->integer('amount') ?: null);
+
         $existing = $order->payments()
             ->where('status', 'pending')
+            ->where('amount', $requestedAmount)
             ->whereNotNull('account_number')
             // An expired account still accepts nothing, so a dead one must not be
             // handed back. A null expiry means the account does not expire.
@@ -62,9 +67,18 @@ class PaymentController extends Controller
             return response()->json(['data' => $this->instructionPayload($order, $existing)]);
         }
 
+        $payment = $order->payments()->create([
+            'provider' => $this->gateway->name(),
+            'provider_reference' => $this->paymentReference($order),
+            'status' => 'pending',
+            'amount' => $requestedAmount,
+            'currency' => $order->currency,
+        ]);
+
         try {
-            $instruction = $this->gateway->initialize($order);
+            $instruction = $this->gateway->initialize($order, $requestedAmount, $payment->provider_reference);
         } catch (RuntimeException $e) {
+            $payment->forceFill(['status' => 'abandoned'])->save();
             Log::error('Payment initialisation failed.', [
                 'order' => $order->reference,
                 'provider' => $this->gateway->name(),
@@ -76,19 +90,15 @@ class PaymentController extends Controller
             ], 502);
         }
 
-        $payment = $order->payments()->create([
-            'provider' => $this->gateway->name(),
+        $payment->forceFill([
             'provider_reference' => $instruction->reference,
-            'status' => 'pending',
-            'amount' => $order->total,
-            'currency' => $order->currency,
             'account_number' => $instruction->accountNumber,
             'account_name' => $instruction->accountName,
             'bank_name' => $instruction->bankName,
             'expires_at' => $instruction->expiresAt,
             'authorization_url' => $instruction->authorizationUrl,
             'raw_response' => $instruction->raw,
-        ]);
+        ])->save();
 
         return response()->json(['data' => $this->instructionPayload($order, $payment)]);
     }
@@ -231,15 +241,18 @@ class PaymentController extends Controller
         $request->validate([
             'reference' => ['required', 'string', 'max:32'],
             'outcome' => ['required', 'in:success,failed'],
+            'amount' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $order = Order::where('reference', $this->normalise($request->input('reference')))
             ->firstOrFail();
 
+        $payment = $order->payments()->where('status', 'pending')->latest('id')->first();
+
         MockLedger::settle(
-            $order->reference,
+            $payment?->provider_reference ?? $order->reference,
             (string) $request->input('outcome'),
-            $order->total,
+            (int) ($request->input('amount') ?? $payment?->amount ?? $order->total),
         );
 
         return response()->json(['data' => ['status' => 'recorded']]);
@@ -314,7 +327,7 @@ class PaymentController extends Controller
         return [
             'status' => $order->status,
             'reference' => $order->reference,
-            'amount' => (int) $order->total,
+            'amount' => (int) $payment->amount,
             'currency' => $order->currency,
             // A transfer flow fills these; a redirect provider would fill
             // `authorization_url` instead. The storefront renders whichever it gets.
@@ -324,7 +337,48 @@ class PaymentController extends Controller
             'expires_at' => $payment->expires_at?->toIso8601String(),
             'authorization_url' => $payment->authorization_url,
             'provider' => $payment->provider,
+            'payment_mode' => $order->payment_mode,
+            'layaway_paid_amount' => (int) $order->layaway_paid_amount,
+            'layaway_balance' => $order->layawayBalance(),
+            'layaway_minimum_payment' => $order->layaway_minimum_payment,
+            'layaway_due_at' => $order->layaway_due_at?->toIso8601String(),
         ];
+    }
+
+    private function requestedAmount(Order $order, ?int $requested): int
+    {
+        if (! $order->isLayaway()) {
+            if ($requested !== null && $requested !== $order->total) {
+                abort(422, 'Full-payment orders must be paid in one transfer.');
+            }
+
+            return (int) $order->total;
+        }
+
+        if ($order->layaway_due_at?->isPast()) {
+            abort(422, 'This reservation has expired. Please place a new order.');
+        }
+
+        $balance = $order->layawayBalance();
+        $minimum = $order->layaway_paid_amount === 0
+            ? (int) $order->layaway_minimum_payment
+            : min((int) config('shop.layaway.minimum_payment'), $balance);
+        $amount = $requested ?? $minimum;
+
+        if ($amount < $minimum || $amount > $balance) {
+            abort(422, "Choose a payment from ₦{$minimum} to ₦{$balance}.");
+        }
+
+        return $amount;
+    }
+
+    private function paymentReference(Order $order): string
+    {
+        if (! $order->isLayaway()) {
+            return $order->reference;
+        }
+
+        return $order->reference.'-'.str_pad((string) ($order->payments()->count() + 1), 2, '0', STR_PAD_LEFT);
     }
 
     private function acknowledge(): JsonResponse

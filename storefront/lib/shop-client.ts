@@ -7,7 +7,7 @@
  */
 
 import type { CartEntry } from "@/lib/cart-store";
-import type { Condition, UnitSpecs } from "@/lib/types";
+import type { Condition, CouponValidationResult, Order, UnitSpecs } from "@/lib/types";
 
 export type ResolvedLine = {
   key: string;
@@ -31,6 +31,14 @@ export type ResolvedCart = {
   lines: ResolvedLine[];
   subtotal: number;
   delivery_fee: number;
+  discount_amount?: number;
+  coupon?: {
+    code: string;
+    description?: string;
+    discount_amount?: number;
+    error?: string;
+    valid?: boolean;
+  } | null;
   total: number;
   currency: string;
   has_problems: boolean;
@@ -74,13 +82,37 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 export async function resolveCart(
   entries: readonly CartEntry[],
   deliveryZone?: string,
+  couponCode?: string,
+  email?: string,
 ): Promise<ResolvedCart> {
   const { data } = await post<{ data: ResolvedCart }>("/api/cart", {
     items: entries,
     delivery_zone: deliveryZone,
+    coupon_code: couponCode,
+    email: email,
   });
 
   return data;
+}
+
+/** Validates a promo code against cart items and returns discount breakdown. */
+export async function validateCoupon(
+  code: string,
+  entries?: readonly CartEntry[],
+  deliveryZone?: string,
+  email?: string,
+): Promise<CouponValidationResult> {
+  const res = await post<{ valid: boolean; data: CouponValidationResult }>(
+    "/api/coupons/validate",
+    {
+      code,
+      items: entries,
+      delivery_zone: deliveryZone,
+      email,
+    },
+  );
+
+  return res.data;
 }
 
 export type PlaceOrderInput = {
@@ -95,6 +127,8 @@ export type PlaceOrderInput = {
     note?: string;
   };
   offer_reference?: string;
+  coupon_code?: string;
+  payment_mode?: "full" | "layaway";
 };
 
 export type PlacedOrder = {
@@ -103,8 +137,15 @@ export type PlacedOrder = {
   status_label: string;
   subtotal: number;
   delivery_fee: number;
+  coupon_code?: string | null;
+  discount_amount?: number;
   total: number;
   reserved_until: string | null;
+  payment_mode?: "full" | "layaway";
+  layaway_paid_amount?: number;
+  layaway_balance?: number | null;
+  layaway_minimum_payment?: number | null;
+  layaway_due_at?: string | null;
 };
 
 /**
@@ -145,10 +186,11 @@ export type PaymentInstruction = {
  */
 export async function initializePayment(
   reference: string,
+  amount?: number,
 ): Promise<PaymentInstruction> {
   const { data } = await post<{ data: PaymentInstruction }>(
     "/api/payments/initialize",
-    { reference },
+    { reference, amount },
   );
 
   return data;
@@ -162,8 +204,8 @@ export async function initializePayment(
  */
 export async function verifyPayment(
   reference: string,
-): Promise<{ status: string }> {
-  const { data } = await post<{ data: { status: string } }>(
+): Promise<{ status: string; order?: Order }> {
+  const { data } = await post<{ data: { status: string; order?: Order } }>(
     "/api/payments/verify",
     { reference },
   );
@@ -180,8 +222,9 @@ export async function verifyPayment(
 export async function mockSettle(
   reference: string,
   outcome: "success" | "failed",
+  amount?: number,
 ): Promise<void> {
-  await post("/api/payments/mock-settle", { reference, outcome });
+  await post("/api/payments/mock-settle", { reference, outcome, amount });
 }
 
 /* ----------------------------------------------------------- ai assistant */
@@ -225,4 +268,3 @@ export async function askAiAssistant(input: {
 }): Promise<AiAssistantResponse> {
   return post<AiAssistantResponse>("/api/ai/recommend", input);
 }
-

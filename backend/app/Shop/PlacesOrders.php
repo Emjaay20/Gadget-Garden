@@ -3,6 +3,7 @@
 namespace App\Shop;
 
 use App\Models\Address;
+use App\Models\Coupon;
 use App\Models\Customer;
 use App\Models\DeliveryZone;
 use App\Models\Offer;
@@ -54,6 +55,8 @@ class PlacesOrders
         array $address,
         DeliveryZone $zone,
         ?string $offerReference = null,
+        ?string $couponCode = null,
+        string $paymentMode = Order::PAYMENT_MODE_FULL,
     ): Order {
         // Resolved OUTSIDE the transaction first, so an obviously dead cart is
         // rejected without taking any locks.
@@ -80,8 +83,25 @@ class PlacesOrders
             }
         }
 
+        $coupon = null;
+        if ($couponCode) {
+            $coupon = Coupon::where('code', strtoupper(trim($couponCode)))
+                ->where('is_active', true)
+                ->first();
+
+            if (! $coupon) {
+                throw new CartUnavailableException([
+                    ['problem' => 'The coupon code entered is invalid or inactive.'],
+                ]);
+            }
+        }
+
         try {
-            return $this->placeInTransaction($lines, $contact, $address, $zone, $offer);
+            if ($paymentMode === Order::PAYMENT_MODE_LAYAWAY) {
+                $this->assertLayawayEligible($lines);
+            }
+
+            return $this->placeInTransaction($lines, $contact, $address, $zone, $offer, $coupon, $paymentMode);
         } catch (UnitTakenException) {
             /*
              | Someone else got the machine between our availability check and
@@ -106,9 +126,14 @@ class PlacesOrders
         array $address,
         DeliveryZone $zone,
         ?Offer $offer = null,
+        ?Coupon $coupon = null,
+        string $paymentMode = Order::PAYMENT_MODE_FULL,
     ): Order {
-        return DB::transaction(function () use ($lines, $contact, $address, $zone, $offer) {
-            $reservedUntil = now()->addHours(config('shop.unpaid_order_ttl_hours'));
+        return DB::transaction(function () use ($lines, $contact, $address, $zone, $offer, $coupon, $paymentMode) {
+            $isLayaway = $paymentMode === Order::PAYMENT_MODE_LAYAWAY;
+            $reservedUntil = $isLayaway
+                ? now()->addDays((int) config('shop.layaway.term_days'))
+                : now()->addHours(config('shop.unpaid_order_ttl_hours'));
 
             $customer = Customer::matchOrCreate(
                 $contact['name'],
@@ -130,6 +155,8 @@ class PlacesOrders
                 'contact_phone' => $contact['phone'],
                 'placed_at' => now(),
                 'reserved_until' => $reservedUntil,
+                'payment_mode' => $paymentMode,
+                'layaway_due_at' => $isLayaway ? $reservedUntil : null,
             ]);
 
             $order->save();
@@ -198,11 +225,34 @@ class PlacesOrders
 
             $deliveryFee = $this->cart->deliveryFee($zone, $subtotal);
 
+            $discountAmount = 0;
+            $appliedCouponCode = null;
+
+            if ($coupon) {
+                $validation = $coupon->validateFor($subtotal, $contact['email']);
+                if (! $validation['valid']) {
+                    throw new CartUnavailableException([
+                        ['problem' => $validation['error'] ?? 'Coupon is not applicable.'],
+                    ]);
+                }
+                $discountAmount = $validation['discount'];
+                $appliedCouponCode = $coupon->code;
+                $coupon->increment('used_count');
+            }
+
             $order->forceFill([
                 'address_id' => $addressRow->id,
                 'subtotal' => $subtotal,
                 'delivery_fee' => $deliveryFee,
-                'total' => $subtotal + $deliveryFee,
+                'coupon_code' => $appliedCouponCode,
+                'discount_amount' => $discountAmount,
+                'total' => $subtotal + $deliveryFee - $discountAmount,
+                'layaway_minimum_payment' => $isLayaway
+                    ? max(
+                        (int) config('shop.layaway.minimum_payment'),
+                        (int) ceil(($subtotal + $deliveryFee - $discountAmount) * ((int) config('shop.layaway.deposit_percent') / 100)),
+                    )
+                    : null,
             ])->save();
 
             if ($offer) {
@@ -222,6 +272,16 @@ class PlacesOrders
 
             return $order->fresh(['items', 'address.zone', 'customer']);
         });
+    }
+
+    /** @param Collection<int, CartLine> $lines */
+    private function assertLayawayEligible(Collection $lines): void
+    {
+        if (! config('shop.layaway.enabled') || $lines->count() !== 1 || ! $lines->first()?->unit) {
+            throw new CartUnavailableException([
+                ['problem' => 'Reserve & pay gradually is available for one serialized laptop at a time.'],
+            ]);
+        }
     }
 
     /**

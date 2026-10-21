@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Search } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
+import { AccountButton } from "@/components/layout/account-button";
 import { CartButton } from "@/components/layout/cart-button";
 import { CategoryNav } from "@/components/layout/category-nav";
 import { SearchField } from "@/components/layout/search-field";
@@ -51,6 +52,7 @@ export function SiteHeader() {
               <Search className="size-4" />
             </Link>
 
+            <AccountButton />
             <CartButton />
           </div>
         </div>

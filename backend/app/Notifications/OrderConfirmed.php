@@ -51,9 +51,19 @@ class OrderConfirmed extends Notification implements ShouldQueue
             $message->line("{$line} — ".$this->naira($item->line_total));
         }
 
+        $message->line('---');
+        $message->line('Subtotal: '.$this->naira($this->order->subtotal));
+        if ($this->order->delivery_fee > 0) {
+            $message->line('Delivery: '.$this->naira($this->order->delivery_fee));
+        }
+        if ($this->order->discount_amount > 0) {
+            $message->line("Discount ({$this->order->coupon_code}): -".$this->naira($this->order->discount_amount));
+        }
+
         $message
             ->line('**Total paid: '.$this->naira($this->order->total).'**')
             ->line('We will be in touch with delivery details shortly.')
+            ->action('View Order Status & Tracking', url("/order/{$this->order->reference}"))
             ->salutation('Gadgets Garden — Computer Village, Ikeja');
 
         return $message;

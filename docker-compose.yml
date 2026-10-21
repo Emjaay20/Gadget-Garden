@@ -6,10 +6,6 @@ services:
       APP_ENV: production
       PORT: "80"
       APP_URL: https://gadgetsgarden.aetherhost.com.ng
-      OWNER_EMAIL: owner@gadgetsgarden.ng
-      OWNER_PASSWORD: AdminPassword123!
-      OWNER_NAME: "Store Owner"
-      APP_KEY: "base64:YAkmExFxaiCw9utyZE7J22jlMW5qTj4psnhNNTXHsDg="
     volumes:
       - gg_pgdata:/var/lib/postgresql/data
       - gg_storage:/app/backend/storage/app/public

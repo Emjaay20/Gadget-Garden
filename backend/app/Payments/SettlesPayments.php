@@ -50,29 +50,40 @@ class SettlesPayments
         }
 
         return DB::transaction(function () use ($payment, $result) {
+            /** @var Payment|null $lockedPayment */
+            $lockedPayment = Payment::query()->lockForUpdate()->find($payment->id);
             /** @var Order|null $order */
-            $order = Order::query()->lockForUpdate()->find($payment->order_id);
+            $order = Order::query()->lockForUpdate()->find($lockedPayment?->order_id);
 
             // Already settled by the webhook, or by an earlier poll. This is the
             // idempotency guard — everything below runs at most once per order.
-            if (! $order || $order->status !== Order::PENDING_PAYMENT) {
+            if (! $lockedPayment || $lockedPayment->status === 'success' || ! $order || $order->status !== Order::PENDING_PAYMENT) {
                 return false;
             }
 
-            $paid = $result->amount ?? $order->total;
+            $paid = $result->amount ?? $lockedPayment->amount;
 
-            if ($paid < $order->total) {
-                $this->recordShortfall($payment, $order, $paid, $result);
+            if ($paid < $lockedPayment->amount) {
+                $this->recordShortfall($lockedPayment, $order, $paid, $result);
 
                 return false;
             }
 
-            $payment->forceFill([
+            $lockedPayment->forceFill([
                 'status' => 'success',
-                'provider_transaction_id' => $result->transactionId ?? $payment->provider_transaction_id,
+                'provider_transaction_id' => $result->transactionId ?? $lockedPayment->provider_transaction_id,
                 'paid_at' => $result->paidAt ?? now(),
-                'raw_response' => $result->raw ?: $payment->raw_response,
+                'raw_response' => $result->raw ?: $lockedPayment->raw_response,
             ])->save();
+
+            if ($order->isLayaway()) {
+                $newPaidAmount = min($order->total, $order->layaway_paid_amount + $paid);
+                $order->forceFill(['layaway_paid_amount' => $newPaidAmount])->save();
+
+                if ($newPaidAmount < $order->total) {
+                    return false;
+                }
+            }
 
             $order->forceFill([
                 'status' => Order::PAID,
@@ -232,16 +243,16 @@ class SettlesPayments
             'raw_response' => $result->raw ?: $payment->raw_response,
         ])->save();
 
-        $short = $order->total - $paid;
+        $short = $payment->amount - $paid;
 
         $this->appendStaffNote(
             $order,
-            "Underpaid: ₦{$paid} received against ₦{$order->total} — ₦{$short} short.",
+            "Underpaid: ₦{$paid} received against payment request ₦{$payment->amount} — ₦{$short} short.",
         );
 
         Log::warning('Order underpaid.', [
             'order' => $order->reference,
-            'expected' => $order->total,
+            'expected' => $payment->amount,
             'received' => $paid,
         ]);
     }
@@ -262,6 +273,10 @@ class SettlesPayments
                 'status' => 'failed',
                 'raw_response' => $result->raw ?: $payment->raw_response,
             ])->save();
+
+            if ($order->isLayaway()) {
+                return;
+            }
 
             /*
              | The order is marked failed but its RESERVATIONS ARE LEFT IN PLACE,

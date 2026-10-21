@@ -62,7 +62,7 @@ elif [ -n "$EXISTING_KEY" ]; then
 elif [ -f /var/lib/postgresql/data/.app_key ]; then
     ACTIVE_KEY="$(cat /var/lib/postgresql/data/.app_key)"
 else
-    ACTIVE_KEY="base64:YAkmExFxaiCw9utyZE7J22jlMW5qTj4psnhNNTXHsDg="
+    ACTIVE_KEY="base64:$(openssl rand -base64 32 | tr -d '\n')"
 fi
 
 cat <<EOF > .env
@@ -84,7 +84,19 @@ CACHE_STORE=database
 QUEUE_CONNECTION=database
 SESSION_DRIVER=database
 
-SHOP_PAYMENT_PROVIDER=mock
+SHOP_PAYMENT_PROVIDER=${SHOP_PAYMENT_PROVIDER:-disabled}
+SHOP_XENDIFY_BASE_URL=${SHOP_XENDIFY_BASE_URL:-https://api.xendify.com/api/v1}
+SHOP_XENDIFY_SECRET_KEY=${SHOP_XENDIFY_SECRET_KEY:-}
+SHOP_XENDIFY_WEBHOOK_KEY=${SHOP_XENDIFY_WEBHOOK_KEY:-}
+SHOP_XENDIFY_PROVIDER=${SHOP_XENDIFY_PROVIDER:-safehaven}
+SHOP_LAYAWAY_ENABLED=${SHOP_LAYAWAY_ENABLED:-true}
+MAIL_MAILER=${MAIL_MAILER:-log}
+MAIL_HOST=${MAIL_HOST:-}
+MAIL_PORT=${MAIL_PORT:-587}
+MAIL_USERNAME=${MAIL_USERNAME:-}
+MAIL_PASSWORD=${MAIL_PASSWORD:-}
+MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-hello@gadgetsgarden.ng}
+MAIL_FROM_NAME=${MAIL_FROM_NAME:-"Gadgets Garden"}
 EOF
 chown www-data:www-data .env
 
@@ -98,10 +110,11 @@ echo "==> [Gadgets Garden] Seeding roles and permissions..."
 php artisan db:seed --class=RolePermissionSeeder --force
 
 echo "==> [Gadgets Garden] Ensuring owner account exists..."
-OWNER_EMAIL="${OWNER_EMAIL:-owner@gadgetsgarden.ng}"
-OWNER_PASS="${OWNER_PASSWORD:-AdminPassword123!}"
+OWNER_EMAIL="${OWNER_EMAIL:-}"
+OWNER_PASS="${OWNER_PASSWORD:-}"
 OWNER_NAME="${OWNER_NAME:-Store Owner}"
 
+if [ -n "$OWNER_EMAIL" ] && [ -n "$OWNER_PASS" ]; then
 php artisan tinker --execute="
 \$email = '$OWNER_EMAIL';
 \$pass = '$OWNER_PASS';
@@ -119,6 +132,9 @@ if (!\App\Models\User::where('email', \$email)->exists()) {
     echo 'Owner already exists: ' . \$email . PHP_EOL;
 }
 "
+else
+    echo "==> No bootstrap owner configured; existing staff accounts are unchanged."
+fi
 
 echo "==> [Gadgets Garden] Ensuring default categories exist..."
 php artisan tinker --execute="

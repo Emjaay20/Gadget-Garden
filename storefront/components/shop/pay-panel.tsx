@@ -46,10 +46,20 @@ export function PayPanel({
   reference,
   total,
   initialStatus,
+  paymentMode = "full",
+  layawayPaidAmount = 0,
+  layawayBalance = null,
+  layawayMinimumPayment = null,
+  layawayDueAt = null,
 }: {
   reference: string;
   total: number;
   initialStatus: string;
+  paymentMode?: "full" | "layaway";
+  layawayPaidAmount?: number;
+  layawayBalance?: number | null;
+  layawayMinimumPayment?: number | null;
+  layawayDueAt?: string | null;
 }) {
   const router = useRouter();
   const [instruction, setInstruction] = useState<PaymentInstruction | null>(null);
@@ -61,7 +71,7 @@ export function PayPanel({
   useEffect(() => {
     let cancelled = false;
 
-    initializePayment(reference)
+    initializePayment(reference, paymentMode === "layaway" ? layawayMinimumPayment ?? undefined : undefined)
       .then((data) => {
         if (!cancelled) {
           setInstruction(data);
@@ -79,7 +89,7 @@ export function PayPanel({
     return () => {
       cancelled = true;
     };
-  }, [reference]);
+  }, [reference, paymentMode, layawayMinimumPayment]);
 
   const isSettled = status !== "pending_payment";
 
@@ -97,7 +107,7 @@ export function PayPanel({
       try {
         const result = await verifyPayment(reference);
 
-        if (result.status !== "pending_payment") {
+        if (result.status !== "pending_payment" || (paymentMode === "layaway" && (result.order?.layaway_paid_amount ?? 0) > layawayPaidAmount)) {
           setStatus(result.status);
           // Re-render the server component so the whole page reflects the new
           // status, not just this panel.
@@ -110,7 +120,7 @@ export function PayPanel({
     }, POLL_MS);
 
     return () => clearInterval(id);
-  }, [reference, isSettled, error, router]);
+  }, [reference, isSettled, error, router, paymentMode, layawayPaidAmount]);
 
   if (error) {
     return (
@@ -152,6 +162,13 @@ export function PayPanel({
 
   return (
     <div className="space-y-4">
+      {paymentMode === "layaway" && (
+        <div className="border-amber-500/30 bg-amber-500/5 rounded-xl border p-5">
+          <p className="font-medium">Your reserved-device payment plan</p>
+          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-muted-foreground">Paid so far</dt><dd className="gg-numeric mt-1 font-semibold">{naira(layawayPaidAmount)}</dd></div><div><dt className="text-muted-foreground">Balance left</dt><dd className="gg-numeric mt-1 font-semibold">{naira(layawayBalance ?? total)}</dd></div></dl>
+          {layawayDueAt && <p className="mt-3 text-xs text-muted-foreground">Complete the balance by {new Date(layawayDueAt).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}. We dispatch once the total is paid.</p>}
+        </div>
+      )}
       <div className="border-border overflow-hidden rounded-xl border">
         <div className="bg-muted/60 flex items-center gap-2 border-b px-5 py-3">
           <Landmark className="text-muted-foreground size-4" />
@@ -166,19 +183,18 @@ export function PayPanel({
           />
           <Row label="Bank" value={instruction.bank_name ?? "—"} />
           <Row label="Account name" value={instruction.account_name ?? "—"} />
-          <CopyRow label="Amount" value={String(total)} display={naira(total)} />
+          <CopyRow label="Amount" value={String(instruction.amount ?? total)} display={naira(instruction.amount ?? total)} />
 
           <p className="text-muted-foreground border-t pt-4 text-xs text-pretty">
             This account belongs to your order alone — transfer the exact amount
-            from any bank app. We confirm it automatically, usually within a
-            minute.
+            from any bank app. We confirm it automatically, usually within a minute.
           </p>
         </div>
       </div>
 
       <Waiting />
       {instruction.expires_at && <Countdown expiresAt={instruction.expires_at} />}
-      <DevSettle reference={reference} onSettled={() => router.refresh()} />
+      <DevSettle reference={reference} amount={instruction.amount ?? total} onSettled={() => router.refresh()} />
     </div>
   );
 }
@@ -354,9 +370,11 @@ function Settled({ status }: { status: string }) {
  */
 function DevSettle({
   reference,
+  amount,
   onSettled,
 }: {
   reference: string;
+  amount: number;
   onSettled: () => void;
 }) {
   const [available, setAvailable] = useState<boolean | null>(null);
@@ -367,7 +385,7 @@ function DevSettle({
       setBusy(true);
 
       try {
-        await mockSettle(reference, outcome);
+        await mockSettle(reference, outcome, amount);
         setAvailable(true);
         onSettled();
       } catch {
@@ -377,7 +395,7 @@ function DevSettle({
         setBusy(false);
       }
     },
-    [reference, onSettled],
+    [reference, amount, onSettled],
   );
 
   if (available === false) return null;
