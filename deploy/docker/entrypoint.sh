@@ -95,8 +95,8 @@ MAIL_HOST=${MAIL_HOST:-}
 MAIL_PORT=${MAIL_PORT:-587}
 MAIL_USERNAME=${MAIL_USERNAME:-}
 MAIL_PASSWORD=${MAIL_PASSWORD:-}
-MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-hello@gadgetsgarden.ng}
-MAIL_FROM_NAME=${MAIL_FROM_NAME:-"Gadgets Garden"}
+MAIL_FROM_ADDRESS="${MAIL_FROM_ADDRESS:-hello@gadgetsgarden.ng}"
+MAIL_FROM_NAME="${MAIL_FROM_NAME:-Gadgets Garden}"
 EOF
 chown www-data:www-data .env
 
@@ -160,6 +160,7 @@ php artisan storage:link 2>/dev/null || true
 php artisan config:cache
 php artisan route:cache
 php artisan event:cache
+chown -R www-data:www-data /app/backend/storage /app/backend/bootstrap/cache
 
 echo "==> [Gadgets Garden] Starting Supervisor (Nginx, PHP-FPM, Next.js Backoffice, Queue)..."
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
