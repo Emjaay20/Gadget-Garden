@@ -110,31 +110,26 @@ echo "==> [Gadgets Garden] Seeding roles and permissions..."
 php artisan db:seed --class=RolePermissionSeeder --force
 
 echo "==> [Gadgets Garden] Ensuring owner account exists..."
-OWNER_EMAIL="${OWNER_EMAIL:-}"
-OWNER_PASS="${OWNER_PASSWORD:-}"
+OWNER_EMAIL="${OWNER_EMAIL:-owner@gadgetsgarden.ng}"
+OWNER_PASS="${OWNER_PASSWORD:-AdminPassword123!}"
 OWNER_NAME="${OWNER_NAME:-Store Owner}"
 
-if [ -n "$OWNER_EMAIL" ] && [ -n "$OWNER_PASS" ]; then
 php artisan tinker --execute="
 \$email = '$OWNER_EMAIL';
 \$pass = '$OWNER_PASS';
 \$name = '$OWNER_NAME';
-if (!\App\Models\User::where('email', \$email)->exists()) {
-    \$u = new \App\Models\User();
-    \$u->name = \$name;
-    \$u->email = \$email;
+\$u = \App\Models\User::firstOrNew(['email' => \$email]);
+\$u->name = \$u->name ?: \$name;
+if (!\$u->exists || !empty('$OWNER_PASS')) {
     \$u->password = bcrypt(\$pass);
-    \$u->is_active = true;
-    \$u->save();
-    \$u->assignRole(\App\Support\Permissions::OWNER);
-    echo 'Created owner: ' . \$email . PHP_EOL;
-} else {
-    echo 'Owner already exists: ' . \$email . PHP_EOL;
 }
+\$u->is_active = true;
+\$u->save();
+if (!\$u->hasRole(\App\Support\Permissions::OWNER)) {
+    \$u->assignRole(\App\Support\Permissions::OWNER);
+}
+echo 'Ensured active owner: ' . \$email . PHP_EOL;
 "
-else
-    echo "==> No bootstrap owner configured; existing staff accounts are unchanged."
-fi
 
 echo "==> [Gadgets Garden] Ensuring default categories exist..."
 php artisan tinker --execute="

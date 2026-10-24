@@ -21,6 +21,8 @@ class ProductImageResource extends JsonResource
             'url' => $url,
             'path' => $this->path,
             'alt' => $this->alt,
+            'type' => $this->type ?? 'real_device',
+            'is_primary' => (bool) $this->is_primary,
             'position' => (int) $this->position,
         ];
     }

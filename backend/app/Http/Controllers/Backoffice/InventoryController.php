@@ -56,7 +56,11 @@ class InventoryController extends Controller
             $query->where(fn ($q) => $q
                 ->where('name', 'ilike', $term)
                 ->orWhere('brand', 'ilike', $term)
-                ->orWhere('slug', 'ilike', $term));
+                ->orWhere('slug', 'ilike', $term)
+                ->orWhereHas('units', fn ($uq) => $uq
+                    ->where('sku', 'ilike', $term)
+                    ->orWhere('serial', 'ilike', $term)
+                ));
         }
 
         if ($kind = $validated['kind'] ?? null) {
@@ -133,6 +137,14 @@ class InventoryController extends Controller
             'youtube_url' => ['nullable', 'string', 'max:255'],
             'properties' => ['nullable', 'array'],
             'properties.*' => ['string', 'max:50'],
+            'processor' => ['nullable', 'string', 'max:150'],
+            'ram_gb' => ['nullable', 'integer', 'min:1', 'max:512'],
+            'storage_gb' => ['nullable', 'integer', 'min:1', 'max:16384'],
+            'storage_type' => ['nullable', 'string', 'max:50'],
+            'screen_size' => ['nullable', 'string', 'max:50'],
+            'resolution' => ['nullable', 'string', 'max:80'],
+            'graphics' => ['nullable', 'string', 'max:100'],
+            'color' => ['nullable', 'string', 'max:50'],
             'highlights' => ['nullable', 'array'],
             'highlights.*' => ['string', 'max:255'],
             'images' => ['nullable', 'array'],
@@ -261,6 +273,14 @@ class InventoryController extends Controller
             'youtube_url' => ['sometimes', 'nullable', 'string', 'max:255'],
             'properties' => ['sometimes', 'nullable', 'array'],
             'properties.*' => ['string', 'max:50'],
+            'processor' => ['sometimes', 'nullable', 'string', 'max:150'],
+            'ram_gb' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:512'],
+            'storage_gb' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:16384'],
+            'storage_type' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'screen_size' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'resolution' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'graphics' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'color' => ['sometimes', 'nullable', 'string', 'max:50'],
             'highlights' => ['sometimes', 'nullable', 'array'],
             'highlights.*' => ['string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],

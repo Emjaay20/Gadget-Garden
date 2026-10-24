@@ -26,6 +26,8 @@ export type ProductImage = {
   id: string;
   url: string;
   alt: string | null;
+  type?: "real_device" | "official_stock";
+  is_primary?: boolean;
   position: number;
 };
 
@@ -62,6 +64,14 @@ export type Product = {
   description?: string | null;
   youtube_url?: string | null;
   properties?: string[];
+  processor?: string | null;
+  ram_gb?: number | null;
+  storage_gb?: number | null;
+  storage_type?: string | null;
+  screen_size?: string | null;
+  resolution?: string | null;
+  graphics?: string | null;
+  color?: string | null;
   highlights: string[];
   base_specs: UnitSpecs;
   /** Specs of the machine whose price is being shown — what the card prints. */

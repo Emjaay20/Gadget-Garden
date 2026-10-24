@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Boxes, ChartLine, Handshake, History, LogOut, Package, ScrollText } from "lucide-react";
+import { Boxes, ChartLine, Handshake, History, LogOut, Package, ScrollText, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ProfileDialog } from "@/components/profile/profile-dialog";
 import type { Permission, StaffUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ const LINKS: Array<{
   { href: "/offers", label: "Negotiations", icon: Handshake, requires: "offers.manage" },
   { href: "/inventory", label: "Inventory", icon: Boxes, requires: "inventory.view" },
   { href: "/ledger", label: "Stock ledger", icon: ScrollText, requires: "inventory.view" },
+  { href: "/staff", label: "Staff", icon: Users, requires: "staff.manage" },
   // Owner-only: margin exposes what the business paid.
   { href: "/reports", label: "Sales", icon: ChartLine, requires: "reports.view" },
   { href: "/audit-logs", label: "Audit trail", icon: History, requires: "audit.view" },
@@ -73,10 +75,7 @@ export function DashboardNav({ user }: { user: StaffUser }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <div className="text-right leading-tight">
-            <p className="text-sm font-medium">{user.name}</p>
-            <p className="text-muted-foreground text-xs capitalize">{user.role}</p>
-          </div>
+          <ProfileDialog user={user} />
           <Button variant="ghost" size="sm" onClick={signOut} aria-label="Sign out">
             <LogOut className="size-4" />
           </Button>

@@ -7,6 +7,7 @@ import { ConditionBadge } from "@/components/brand/condition-badge";
 import { Reveal } from "@/components/motion/reveal";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { UnitPicker } from "@/components/shop/unit-picker";
+import { ItemSpecifics } from "@/components/shop/item-specifics";
 import { SaveToWishlist } from "@/components/shop/save-to-wishlist";
 import { getProduct } from "@/lib/api";
 import { BUSINESS } from "@/lib/business";
@@ -141,6 +142,10 @@ export default async function ProductPage({ params }: Props) {
           </p>
         </div>
       </div>
+
+      <Reveal className="mt-14">
+        <ItemSpecifics product={product} />
+      </Reveal>
 
       {product.highlights.length > 0 && (
         <Reveal className="mt-20">

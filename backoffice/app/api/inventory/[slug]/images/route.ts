@@ -31,8 +31,9 @@ export async function POST(
         { status: error.status },
       );
     }
+    const msg = error instanceof Error ? error.message : "Could not upload image. Please try again.";
     return Response.json(
-      { message: "Could not upload image. Please try again." },
+      { message: msg },
       { status: 500 },
     );
   }

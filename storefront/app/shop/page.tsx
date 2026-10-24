@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { CatalogueFilters } from "@/components/shop/catalogue-filters";
 import { SortSelect } from "@/components/shop/sort-select";
+import { ShopSearchBar } from "@/components/shop/shop-search-bar";
 import { ProductGrid, ProductGridSkeleton } from "@/components/shop/product-grid";
 import { Button } from "@/components/ui/button";
 import { getFacets, getProducts } from "@/lib/api";
@@ -31,7 +32,7 @@ export default async function ShopPage(props: {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6">
-      <header className="mb-8">
+      <header className="mb-6">
         <h1 className="text-3xl font-semibold tracking-tight">
           {query.search ? `Results for “${query.search}”` : "All products"}
         </h1>
@@ -39,6 +40,8 @@ export default async function ShopPage(props: {
           Every machine is checked before it is listed, and carries a warranty.
         </p>
       </header>
+
+      <ShopSearchBar />
 
       <div className="flex gap-10">
         <Suspense fallback={<div className="hidden w-60 shrink-0 lg:block" />}>

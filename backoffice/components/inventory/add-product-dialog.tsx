@@ -7,6 +7,7 @@ import {
   Sparkles,
   Loader2,
   Laptop,
+  Cpu,
   Package,
   ShieldCheck,
   Tag,
@@ -94,6 +95,14 @@ export function AddProductDialog() {
   const [shortDescription, setShortDescription] = useState("");
   const [properties, setProperties] = useState<string[]>([]);
   const [youtubeUrl, setYoutubeUrl] = useState<string>("");
+  const [processor, setProcessor] = useState<string>("");
+  const [ramGb, setRamGb] = useState<string>("");
+  const [storageGb, setStorageGb] = useState<string>("");
+  const [storageType, setStorageType] = useState<string>("SSD");
+  const [screenSize, setScreenSize] = useState<string>("");
+  const [resolution, setResolution] = useState<string>("");
+  const [graphics, setGraphics] = useState<string>("");
+  const [color, setColor] = useState<string>("");
   const [images, setImages] = useState<ImageEntry[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState<string>("");
 
@@ -228,6 +237,15 @@ export function AddProductDialog() {
         payload.youtube_url = youtubeUrl.trim();
       }
 
+      if (processor.trim()) payload.processor = processor.trim();
+      if (ramGb) payload.ram_gb = parseInt(ramGb, 10);
+      if (storageGb) payload.storage_gb = parseInt(storageGb, 10);
+      if (storageType.trim()) payload.storage_type = storageType.trim();
+      if (screenSize.trim()) payload.screen_size = screenSize.trim();
+      if (resolution.trim()) payload.resolution = resolution.trim();
+      if (graphics.trim()) payload.graphics = graphics.trim();
+      if (color.trim()) payload.color = color.trim();
+
       if (imageUrls.length > 0) {
         payload.images = imageUrls;
       }
@@ -263,20 +281,26 @@ export function AddProductDialog() {
         (img): img is Extract<ImageEntry, { type: "file" }> => img.type === "file",
       );
       if (fileImages.length > 0 && json.data?.slug) {
+        let uploadedCount = 0;
         for (const item of fileImages) {
           try {
             const fd = new FormData();
             fd.append("image", item.file);
-            await fetch(
+            fd.append("type", "real_device");
+            const uploadRes = await fetch(
               `/admin/api/inventory/${encodeURIComponent(json.data.slug)}/images`,
               {
                 method: "POST",
                 body: fd,
               },
             );
+            if (uploadRes.ok) uploadedCount++;
           } catch {
             // continue with remaining files
           }
+        }
+        if (uploadedCount > 0) {
+          toast.success(`Attached ${uploadedCount} real device photo(s)!`);
         }
       }
 
@@ -316,6 +340,14 @@ export function AddProductDialog() {
     setShortDescription("");
     setProperties([]);
     setYoutubeUrl("");
+    setProcessor("");
+    setRamGb("");
+    setStorageGb("");
+    setStorageType("SSD");
+    setScreenSize("");
+    setResolution("");
+    setGraphics("");
+    setColor("");
     setImages([]);
     setImageUrlInput("");
     setAutoEnrich(true);
@@ -479,6 +511,115 @@ export function AddProductDialog() {
             <p className="text-[11px] text-muted-foreground">
               Streams directly from YouTube on the customer product page with zero hosting overhead.
             </p>
+          </div>
+
+          {/* Hardware & Technical Specifications (eBay / Swappa Style) */}
+          <div className="space-y-3 rounded-lg border border-border/80 bg-muted/20 p-3.5">
+            <div className="flex items-center justify-between border-b pb-2">
+              <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+                <Cpu className="size-3.5 text-primary" />
+                Technical Specifications (eBay / Swappa Style)
+              </Label>
+              <span className="text-[11px] text-muted-foreground">For laptops & workstations</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="spec-processor" className="text-xs">Processor / Chip</Label>
+                <Input
+                  id="spec-processor"
+                  placeholder="e.g. Apple M1 Pro (8-Core) or Core i7-1185G7"
+                  value={processor}
+                  onChange={(e) => setProcessor(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="spec-ram" className="text-xs">RAM (GB)</Label>
+                  <select
+                    id="spec-ram"
+                    value={ramGb}
+                    onChange={(e) => setRamGb(e.target.value)}
+                    className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs"
+                  >
+                    <option value="">Select RAM</option>
+                    <option value="8">8 GB</option>
+                    <option value="16">16 GB</option>
+                    <option value="24">24 GB</option>
+                    <option value="32">32 GB</option>
+                    <option value="64">64 GB</option>
+                    <option value="128">128 GB</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="spec-storage" className="text-xs">Storage (GB)</Label>
+                  <select
+                    id="spec-storage"
+                    value={storageGb}
+                    onChange={(e) => setStorageGb(e.target.value)}
+                    className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs"
+                  >
+                    <option value="">Select SSD</option>
+                    <option value="256">256 GB</option>
+                    <option value="512">512 GB</option>
+                    <option value="1024">1 TB (1024 GB)</option>
+                    <option value="2048">2 TB (2048 GB)</option>
+                    <option value="4096">4 TB (4096 GB)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="spec-screen" className="text-xs">Screen Size</Label>
+                  <Input
+                    id="spec-screen"
+                    placeholder="e.g. 14.2 in or 13.3 in"
+                    value={screenSize}
+                    onChange={(e) => setScreenSize(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="spec-resolution" className="text-xs">Display Res</Label>
+                  <Input
+                    id="spec-resolution"
+                    placeholder="e.g. Liquid Retina XDR / FHD"
+                    value={resolution}
+                    onChange={(e) => setResolution(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="spec-gpu" className="text-xs">Graphics / GPU</Label>
+                  <Input
+                    id="spec-gpu"
+                    placeholder="e.g. Apple 14-Core / RTX 3060"
+                    value={graphics}
+                    onChange={(e) => setGraphics(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="spec-color" className="text-xs">Chassis Color</Label>
+                  <Input
+                    id="spec-color"
+                    placeholder="e.g. Space Gray / Silver"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Direct Product Photos & URL input */}

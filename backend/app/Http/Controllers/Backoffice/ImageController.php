@@ -26,10 +26,18 @@ class ImageController extends Controller
 
         $path = $this->resolvePath($request, $validated);
         $position = $validated['position'] ?? ($product->images()->max('position') + 1);
+        $type = $validated['type'] ?? ($request->hasFile('image') ? 'real_device' : 'official_stock');
+        $isPrimary = (bool) ($validated['is_primary'] ?? false);
+
+        if ($isPrimary) {
+            $product->images()->update(['is_primary' => false]);
+        }
 
         $image = $product->images()->create([
             'path' => $path,
             'alt' => $validated['alt'] ?? $product->name,
+            'type' => $type,
+            'is_primary' => $isPrimary,
             'position' => $position,
         ]);
 
@@ -125,6 +133,8 @@ class ImageController extends Controller
             'image' => ['nullable', 'file', 'image', 'mimes:jpeg,png,jpg,webp,avif', 'max:10240'],
             'url' => ['nullable', 'url', 'max:2048'],
             'alt' => ['nullable', 'string', 'max:255'],
+            'type' => ['nullable', 'string', 'in:real_device,official_stock'],
+            'is_primary' => ['nullable', 'boolean'],
             'position' => ['nullable', 'integer', 'min:0'],
         ]);
 

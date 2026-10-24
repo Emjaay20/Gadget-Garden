@@ -31,6 +31,7 @@ class UpdateStaffRequest extends FormRequest
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
             'role' => ['sometimes', Rule::in(Permissions::roles())],
             'is_active' => ['sometimes', 'boolean'],
+            'password' => ['sometimes', 'nullable', 'string', 'min:8'],
         ];
     }
 }

@@ -6,6 +6,7 @@ import { AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddProductDialog } from "@/components/inventory/add-product-dialog";
 import { DeleteProductDialog } from "@/components/inventory/delete-product-dialog";
+import { InventorySearch } from "@/components/inventory/inventory-search";
 import { api } from "@/lib/server/api";
 import { naira, specSummary } from "@/lib/format";
 import type { Paginated, Product } from "@/lib/types";
@@ -56,7 +57,11 @@ export default async function InventoryPage(props: {
         </div>
       </div>
 
-      <Suspense fallback={<Skeleton className="mt-8 h-96" />}>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <InventorySearch defaultValue={search} />
+      </div>
+
+      <Suspense fallback={<Skeleton className="mt-4 h-96" />}>
         <ProductTable lowStock={lowStock} search={search} />
       </Suspense>
     </div>

@@ -61,6 +61,7 @@ class ProductEnrichmentController extends Controller
                     $created = $product->images()->create([
                         'path' => $img['url'],
                         'alt' => $img['alt'] ?? "{$product->name} official photography",
+                        'type' => 'official_stock',
                         'position' => $maxPosition,
                     ]);
                     $attachedImages[] = $created->id;
@@ -120,6 +121,7 @@ class ProductEnrichmentController extends Controller
                 $product->images()->create([
                     'path' => $candidate['url'],
                     'alt' => "{$product->name} official photography",
+                    'type' => 'official_stock',
                     'position' => $maxPosition,
                 ]);
                 $attached++;

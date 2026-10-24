@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { ManualOrderDialog } from "@/components/orders/manual-order-dialog";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { OrdersSearch } from "@/components/orders/orders-search";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/server/api";
 import { naira, shortDateTime } from "@/lib/format";
@@ -64,32 +65,35 @@ async function OrderQueue({
 
   return (
     <>
-      <nav className="mt-6 flex flex-wrap gap-1 border-b">
-        {TABS.map((tab) => {
-          const active = status === tab.value;
-          const count = tab.value ? meta.counts?.[tab.value] : undefined;
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b pb-2">
+        <nav className="flex flex-wrap gap-1">
+          {TABS.map((tab) => {
+            const active = status === tab.value;
+            const count = tab.value ? meta.counts?.[tab.value] : undefined;
 
-          return (
-            <Link
-              key={tab.value || "all"}
-              href={tab.value ? `/orders?status=${tab.value}` : "/orders?status="}
-              className={cn(
-                "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
-                active
-                  ? "border-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground border-transparent",
-              )}
-            >
-              {tab.label}
-              {count !== undefined && count > 0 && (
-                <span className="text-muted-foreground gg-numeric ml-1.5 text-xs">
-                  {count}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
+            return (
+              <Link
+                key={tab.value || "all"}
+                href={tab.value ? `/orders?status=${tab.value}` : "/orders?status="}
+                className={cn(
+                  "-mb-2.5 border-b-2 px-3 py-2 text-sm transition-colors",
+                  active
+                    ? "border-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground border-transparent",
+                )}
+              >
+                {tab.label}
+                {count !== undefined && count > 0 && (
+                  <span className="text-muted-foreground gg-numeric ml-1.5 text-xs">
+                    {count}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+        <OrdersSearch defaultValue={search} />
+      </div>
 
       {data.length === 0 ? (
         <p className="text-muted-foreground py-16 text-center text-sm">

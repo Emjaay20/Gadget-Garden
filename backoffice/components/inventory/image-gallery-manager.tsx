@@ -44,6 +44,7 @@ export function ImageGalleryManager({ slug, initialImages = [] }: Props) {
     setIsUploading(true);
     const formData = new FormData();
     formData.append("image", selectedFile);
+    formData.append("type", "real_device");
     if (fileAlt) formData.append("alt", fileAlt);
 
     try {
@@ -154,12 +155,23 @@ export function ImageGalleryManager({ slug, initialImages = [] }: Props) {
                   className="h-full w-full object-cover transition group-hover:scale-105"
                 />
 
-                {index === 0 && (
-                  <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded bg-neutral-900/80 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm backdrop-blur-xs">
-                    <Star className="size-3 fill-amber-400 text-amber-400" />
-                    Cover
-                  </span>
-                )}
+                <div className="absolute left-2 top-2 flex flex-col gap-1 z-10">
+                  {index === 0 && (
+                    <span className="inline-flex items-center gap-1 rounded bg-neutral-900/80 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm backdrop-blur-xs">
+                      <Star className="size-3 fill-amber-400 text-amber-400" />
+                      Cover
+                    </span>
+                  )}
+                  {img.type === "real_device" ? (
+                    <span className="inline-flex items-center rounded bg-emerald-950/85 border border-emerald-500/40 px-1.5 py-0.5 text-[9px] font-medium text-emerald-300 backdrop-blur-xs">
+                      Actual Unit
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded bg-blue-950/85 border border-blue-500/40 px-1.5 py-0.5 text-[9px] font-medium text-blue-300 backdrop-blur-xs">
+                      Stock Photo
+                    </span>
+                  )}
+                </div>
 
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
                   <Button

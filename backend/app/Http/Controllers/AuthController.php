@@ -77,6 +77,56 @@ class AuthController extends Controller
     }
 
     /**
+     * PATCH /api/me → { data: user, message: string }
+     *
+     * Allows authenticated staff to edit their own profile (name, phone, password).
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'max:255'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'current_password' => ['required_with:password', 'nullable', 'string'],
+            'password' => ['sometimes', 'nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if (! empty($validated['password'])) {
+            if (! Hash::check($validated['current_password'] ?? '', $user->password)) {
+                throw ValidationException::withMessages([
+                    'current_password' => ['The current password you entered is incorrect.'],
+                ]);
+            }
+            $user->password = Hash::make($validated['password']);
+        }
+
+        if (array_key_exists('name', $validated)) {
+            $user->name = $validated['name'];
+        }
+        if (array_key_exists('phone', $validated)) {
+            $user->phone = $validated['phone'];
+        }
+        if (array_key_exists('email', $validated) && $validated['email'] !== $user->email) {
+            $user->email = $validated['email'];
+        }
+
+        $user->save();
+
+        AuditLogger::log(
+            action: 'staff_profile_updated',
+            description: "Staff member {$user->name} updated their profile",
+            auditable: $user,
+        );
+
+        return response()->json([
+            'data' => new UserResource($user->fresh()->load('roles', 'permissions')),
+            'message' => 'Profile updated successfully.',
+        ]);
+    }
+
+    /**
      * POST /api/logout
      *
      * Revokes the CURRENT access token only, not all of the user's tokens —

@@ -147,15 +147,16 @@ class ProductController extends Controller
     private function applyFilters(Builder $query, array $filters): void
     {
         if ($search = $filters['search'] ?? null) {
-            // `ilike` — Postgres-specific, case-insensitive without forcing a
-            // function over the column. Searching name and brand together is
-            // what a shopper expects from "elitebook" or "dell".
             $term = '%'.str_replace('%', '\%', $search).'%';
 
             $query->where(function (Builder $q) use ($term) {
                 $q->where('name', 'ilike', $term)
                     ->orWhere('brand', 'ilike', $term)
-                    ->orWhere('short_description', 'ilike', $term);
+                    ->orWhere('short_description', 'ilike', $term)
+                    ->orWhere('description', 'ilike', $term)
+                    ->orWhereHas('category', fn ($cq) => $cq->where('name', 'ilike', $term))
+                    ->orWhereHas('units', fn ($uq) => $uq->whereRaw('cast(specs as text) ilike ?', [$term]))
+                    ->orWhereRaw('cast(properties as text) ilike ?', [$term]);
             });
         }
 

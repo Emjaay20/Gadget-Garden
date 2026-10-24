@@ -49,6 +49,15 @@ class ProductResource extends JsonResource
             'properties' => $this->properties ?? [],
             'base_specs' => $this->base_specs ?? [],
 
+            'processor' => $this->processor,
+            'ram_gb' => $this->ram_gb ? (int) $this->ram_gb : null,
+            'storage_gb' => $this->storage_gb ? (int) $this->storage_gb : null,
+            'storage_type' => $this->storage_type,
+            'screen_size' => $this->screen_size,
+            'resolution' => $this->resolution,
+            'graphics' => $this->graphics,
+            'color' => $this->color,
+
             /*
              | The specs to print on a card: those of the machine whose price is
              | being shown. A card carrying only a name and a price cannot

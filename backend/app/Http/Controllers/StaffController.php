@@ -48,7 +48,7 @@ class StaffController extends Controller
     public function store(StoreStaffRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $temporary = Str::password(16);
+        $temporary = ! empty($data['password']) ? $data['password'] : Str::password(16);
 
         $user = new User([
             'name' => $data['name'],
@@ -57,8 +57,6 @@ class StaffController extends Controller
             'is_active' => true,
         ]);
 
-        // Not mass-assigned: `password` is absent from the model's #[Fillable]
-        // precisely so it can never arrive from a request body.
         $user->password = Hash::make($temporary);
         $user->save();
 
@@ -86,6 +84,10 @@ class StaffController extends Controller
         $staff->fill(array_intersect_key($data, array_flip([
             'name', 'email', 'phone', 'is_active',
         ])));
+
+        if (! empty($data['password'])) {
+            $staff->password = Hash::make($data['password']);
+        }
 
         $deactivating = $staff->isDirty('is_active') && ! $staff->is_active;
 

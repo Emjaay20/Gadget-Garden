@@ -11,6 +11,7 @@ import {
   Sparkles,
   CheckCircle2,
   Layers,
+  Cpu,
 } from "lucide-react";
 
 function YoutubeIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -69,6 +70,14 @@ export function ProductDetailsEditor({ product }: Props) {
     product.properties ?? [],
   );
   const [youtubeUrl, setYoutubeUrl] = useState(product.youtube_url ?? "");
+  const [processor, setProcessor] = useState(product.processor ?? "");
+  const [ramGb, setRamGb] = useState(product.ram_gb ? String(product.ram_gb) : "");
+  const [storageGb, setStorageGb] = useState(product.storage_gb ? String(product.storage_gb) : "");
+  const [storageType, setStorageType] = useState(product.storage_type ?? "SSD");
+  const [screenSize, setScreenSize] = useState(product.screen_size ?? "");
+  const [resolution, setResolution] = useState(product.resolution ?? "");
+  const [graphics, setGraphics] = useState(product.graphics ?? "");
+  const [color, setColor] = useState(product.color ?? "");
 
   function toggleProperty(prop: string) {
     setProperties((prev) =>
@@ -111,6 +120,14 @@ export function ProductDetailsEditor({ product }: Props) {
         warranty_months: parseInt(warrantyMonths, 10) || 0,
         properties: properties.length > 0 ? properties : null,
         youtube_url: youtubeUrl.trim() || null,
+        processor: processor.trim() || null,
+        ram_gb: ramGb ? parseInt(ramGb, 10) : null,
+        storage_gb: storageGb ? parseInt(storageGb, 10) : null,
+        storage_type: storageType.trim() || null,
+        screen_size: screenSize.trim() || null,
+        resolution: resolution.trim() || null,
+        graphics: graphics.trim() || null,
+        color: color.trim() || null,
       };
 
       const res = await fetch(`/admin/api/inventory/${encodeURIComponent(product.slug)}`, {
@@ -256,6 +273,115 @@ export function ProductDetailsEditor({ product }: Props) {
               />
             </div>
           )}
+        </div>
+
+        {/* Technical Specifications (eBay / Swappa Style) */}
+        <div className="space-y-3 rounded-lg border border-border/80 bg-muted/20 p-4">
+          <div className="flex items-center justify-between border-b pb-2">
+            <Label className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
+              <Cpu className="size-3.5 text-primary" />
+              Technical Specifications (eBay / Swappa Item Specifics)
+            </Label>
+            <span className="text-[11px] text-muted-foreground">Appears in customer tech spec table</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="space-y-1">
+              <Label htmlFor="edit-spec-processor" className="text-xs font-medium">Processor / CPU</Label>
+              <Input
+                id="edit-spec-processor"
+                placeholder="e.g. Apple M1 Pro (8-Core) or Core i7-1185G7"
+                value={processor}
+                onChange={(e) => setProcessor(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-spec-ram" className="text-xs font-medium">RAM (GB)</Label>
+                <select
+                  id="edit-spec-ram"
+                  value={ramGb}
+                  onChange={(e) => setRamGb(e.target.value)}
+                  className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs"
+                >
+                  <option value="">Select RAM</option>
+                  <option value="8">8 GB</option>
+                  <option value="16">16 GB</option>
+                  <option value="24">24 GB</option>
+                  <option value="32">32 GB</option>
+                  <option value="64">64 GB</option>
+                  <option value="128">128 GB</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="edit-spec-storage" className="text-xs font-medium">Storage (GB)</Label>
+                <select
+                  id="edit-spec-storage"
+                  value={storageGb}
+                  onChange={(e) => setStorageGb(e.target.value)}
+                  className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs shadow-xs"
+                >
+                  <option value="">Select SSD</option>
+                  <option value="256">256 GB</option>
+                  <option value="512">512 GB</option>
+                  <option value="1024">1 TB (1024 GB)</option>
+                  <option value="2048">2 TB (2048 GB)</option>
+                  <option value="4096">4 TB (4096 GB)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-spec-screen" className="text-xs font-medium">Screen Size</Label>
+                <Input
+                  id="edit-spec-screen"
+                  placeholder='e.g. 14.2" or 13.3"'
+                  value={screenSize}
+                  onChange={(e) => setScreenSize(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="edit-spec-resolution" className="text-xs font-medium">Display Resolution</Label>
+                <Input
+                  id="edit-spec-resolution"
+                  placeholder="e.g. Liquid Retina XDR"
+                  value={resolution}
+                  onChange={(e) => setResolution(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-spec-gpu" className="text-xs font-medium">Graphics / GPU</Label>
+                <Input
+                  id="edit-spec-gpu"
+                  placeholder="e.g. Apple 14-Core / RTX 3060"
+                  value={graphics}
+                  onChange={(e) => setGraphics(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="edit-spec-color" className="text-xs font-medium">Color</Label>
+                <Input
+                  id="edit-spec-color"
+                  placeholder="e.g. Space Gray / Silver"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Short Description */}

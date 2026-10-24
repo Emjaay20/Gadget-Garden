@@ -23,6 +23,7 @@ use RuntimeException;
 #[Fillable([
     'slug', 'name', 'brand', 'kind', 'category_id', 'description',
     'short_description', 'youtube_url', 'highlights', 'properties', 'base_specs',
+    'processor', 'ram_gb', 'storage_gb', 'storage_type', 'screen_size', 'resolution', 'graphics', 'color',
     'warranty_months', 'price', 'compare_at_price', 'low_stock_threshold',
     'currency', 'is_featured', 'is_active',
 ])]
@@ -47,6 +48,8 @@ class Product extends Model
             'highlights' => 'array',
             'properties' => 'array',
             'base_specs' => 'array',
+            'ram_gb' => 'integer',
+            'storage_gb' => 'integer',
             'is_featured' => 'boolean',
             'is_active' => 'boolean',
         ];

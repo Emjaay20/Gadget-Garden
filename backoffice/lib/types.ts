@@ -137,6 +137,8 @@ export type ProductImage = {
   url: string;
   path?: string;
   alt: string | null;
+  type?: "real_device" | "official_stock";
+  is_primary?: boolean;
   position: number;
 };
 
@@ -151,6 +153,14 @@ export type Product = {
   description?: string | null;
   youtube_url?: string | null;
   properties?: string[];
+  processor?: string | null;
+  ram_gb?: number | null;
+  storage_gb?: number | null;
+  storage_type?: string | null;
+  screen_size?: string | null;
+  resolution?: string | null;
+  graphics?: string | null;
+  color?: string | null;
   highlights?: string[];
   summary_specs: UnitSpecs;
   warranty_months: number;

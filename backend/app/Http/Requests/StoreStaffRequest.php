@@ -25,6 +25,7 @@ class StoreStaffRequest extends FormRequest
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:32'],
             'role' => ['required', Rule::in(Permissions::roles())],
+            'password' => ['nullable', 'string', 'min:8'],
         ];
     }
 }

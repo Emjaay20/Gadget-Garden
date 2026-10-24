@@ -35,8 +35,9 @@ class CatalogueSeeder extends Seeder
     {
         $categories = $this->seedCategories();
         $this->seedDeliveryZones();
-        $this->seedLaptops($categories['laptops']);
-        $this->seedAccessories($categories['accessories']);
+        $laptopCategory = $categories['business-laptop'] ?? $categories['laptops'] ?? $categories['workstation'] ?? reset($categories);
+        $this->seedLaptops($laptopCategory);
+        $this->seedAccessories($categories['accessories'] ?? reset($categories));
     }
 
     /** @return array<string, Category> */
@@ -99,6 +100,26 @@ class CatalogueSeeder extends Seeder
     {
         $listings = [
             [
+                'slug' => 'apple-macbook-pro-14-m1-pro',
+                'name' => 'Apple MacBook Pro 14" (M1 Pro)',
+                'brand' => 'Apple',
+                'warranty' => 12,
+                'short' => 'Apple Silicon workstation with Liquid Retina XDR display, incredible battery life, and pro performance.',
+                'highlights' => [
+                    '14.2" Liquid Retina XDR display with ProMotion 120Hz',
+                    'Apple M1 Pro chip with 8-core CPU and 14-core GPU',
+                    'Up to 17 hours battery life and MagSafe 3 fast charging',
+                    'HDMI port, SDXC card slot, and 3x Thunderbolt 4 ports',
+                ],
+                'youtube_url' => 'https://www.youtube.com/watch?v=rr2XfL_df3o',
+                'properties' => ['Workstation', 'Pro Display'],
+                'units' => [
+                    ['GG-MBP14-001', 980_000, 820_000, 'A', ['cpu' => 'Apple M1 Pro (8-Core)', 'ram_gb' => 16, 'storage_gb' => 512, 'storage_type' => 'Unified SSD', 'screen' => '14.2" Liquid Retina XDR', 'color' => 'Space Gray', 'battery_health' => 96]],
+                    ['GG-MBP14-002', 1_180_000, 990_000, 'A', ['cpu' => 'Apple M1 Pro (10-Core)', 'ram_gb' => 16, 'storage_gb' => 1024, 'storage_type' => 'Unified SSD', 'screen' => '14.2" Liquid Retina XDR', 'color' => 'Silver', 'battery_health' => 93]],
+                    ['GG-MBP14-003', 1_450_000, 1_220_000, 'A', ['cpu' => 'Apple M1 Max (10-Core)', 'ram_gb' => 32, 'storage_gb' => 1024, 'storage_type' => 'Unified SSD', 'screen' => '14.2" Liquid Retina XDR', 'color' => 'Space Gray', 'battery_health' => 91]],
+                ],
+            ],
+            [
                 'slug' => 'hp-elitebook-840-g8',
                 'name' => 'HP EliteBook 840 G8',
                 'brand' => 'HP',
@@ -157,7 +178,8 @@ class CatalogueSeeder extends Seeder
 
     private function seedGamingListing(): void
     {
-        $gaming = Category::where('slug', 'gaming')->firstOrFail();
+        $gaming = Category::whereIn('slug', ['gaming', 'gaming-laptop'])->first()
+            ?? Category::first();
 
         $this->seedUnitListing($gaming, [
             'slug' => 'alienware-x15-r1',
@@ -213,6 +235,8 @@ class CatalogueSeeder extends Seeder
                 'warranty_months' => $listing['warranty'],
                 'is_featured' => $listing['featured'] ?? false,
                 'is_active' => true,
+                'youtube_url' => $listing['youtube_url'] ?? null,
+                'properties' => $listing['properties'] ?? null,
             ],
         );
 
