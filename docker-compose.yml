@@ -26,4 +26,6 @@ networks:
 
 volumes:
   gg_pgdata:
+    name: gadgetsgarden_gg_pgdata
   gg_storage:
+    name: gadgetsgarden_gg_storage
